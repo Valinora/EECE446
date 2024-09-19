@@ -70,11 +70,11 @@ int main(int argc, char **argv) {
 
   while (1) {
     while (missing > 0) {
-      last_received = recv(s, read_buf, window_size - (window_size - missing), 0);
-      total_bytes += last_received;
+      last_received = recv(s, read_buf, missing, 0);
       if (last_received <= 0) {
         break;
       }
+      total_bytes += last_received;
       // Copy from where we left off into our window
       memcpy(window + (window_size - missing), read_buf, last_received);
       missing -= last_received;
