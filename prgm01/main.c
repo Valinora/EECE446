@@ -20,7 +20,7 @@
  * for closing the returned socket.
  */
 int lookup_and_connect(const char *host, const char *service);
-int pattern_count(const char *buffer, const char *pattern);
+int pattern_count(const char *buffer, const char *pattern, int length);
 
 int main(int argc, char **argv) {
   if (argc < 2) {
@@ -40,8 +40,8 @@ int main(int argc, char **argv) {
   const char *port = "80";
   char HTTP_REQ[] = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
 
-  char window[window_size];
-  uint8_t read_buf[window_size];
+  char window[window_size + 1];
+  char read_buf[window_size];
 
   /* Lookup IP and connect to server */
   if ((s = lookup_and_connect(host, port)) < 0) {
@@ -63,33 +63,26 @@ int main(int argc, char **argv) {
     total_bytes_sent += bytes_sent;
   }
 
-  ssize_t last_received = 0;
+  ssize_t bytes_received = INT_MAX;
   int total_bytes = 0;
   int tag_count = 0;
-  int missing = window_size;
+  int leftover = window_size;
 
-  while (1) {
-    while (missing > 0) {
-      last_received = recv(s, read_buf, missing, 0);
-      if (last_received <= 0) {
-        break;
-      }
-      total_bytes += last_received;
-      // Copy from where we left off into our window
-      memcpy(window + (window_size - missing), read_buf, last_received);
-      missing -= last_received;
+
+  while ( bytes_received > 0) {
+    bytes_received = recv(s, read_buf, leftover, 0);
+    total_bytes += bytes_received;
+    memcpy(window + (window_size - leftover), read_buf, bytes_received);
+    leftover -= bytes_received;
+
+    if(leftover == 0 || bytes_received == 0) {
+      tag_count += pattern_count(window, "<h1>", window_size);
+      leftover = window_size;
     }
 
-    if (missing == 0) {
-      tag_count += pattern_count(window, "<h1>");
-      missing = window_size;
-    }
 
-    // Received is 0 when the server gracefully terminates.
-    if (last_received <= 0) {
-      break;
-    }
   }
+
 
   printf("Number of <h1> tags: %d\n", tag_count);
   printf("Number of bytes: %d\n", total_bytes);
@@ -102,13 +95,14 @@ int main(int argc, char **argv) {
 /**
  * Counts the occurrences of `pattern` in `buffer`.
  */
-int pattern_count(const char *buffer, const char *pattern) {
+int pattern_count(const char *buffer, const char *pattern, int length) {
   int count = 0;
-  const char *tmp = buffer;
-  while ((tmp = strstr(tmp, pattern)) != NULL) {
+  const char *start = buffer;
+  const char *end = buffer + length;
+  while ((start = strstr(start, pattern)) != NULL && start < end) {
     count++;
     // Move past the current match
-    tmp += strlen(pattern);
+    start += strlen(pattern);
   }
 
   return count;
