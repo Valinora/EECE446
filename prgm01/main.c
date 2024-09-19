@@ -48,8 +48,21 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-//   ssize_t bytes_sent = send(s, HTTP_REQ, sizeof(HTTP_REQ), 0);
-  send(s, HTTP_REQ, sizeof(HTTP_REQ), 0);
+  ssize_t bytes_sent = 0;
+  ssize_t total_bytes_sent = 0;
+  ssize_t request_len = sizeof(HTTP_REQ);
+
+  while (total_bytes_sent < request_len) {
+    bytes_sent =
+        send(s, HTTP_REQ + total_bytes_sent, request_len - total_bytes_sent, 0);
+    if (bytes_sent <= 0) {
+      perror("send");
+      close(s);
+      return -1;
+    }
+    total_bytes_sent += bytes_sent;
+  }
+
   ssize_t last_received = 0;
   int total_bytes = 0;
   int tag_count = 0;
