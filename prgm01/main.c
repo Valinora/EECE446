@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  // "Globals"
   int s;
   const char *host = "www.ecst.csuchico.edu";
   const char *port = "80";
@@ -49,33 +50,20 @@ int main(int argc, char **argv) {
   }
 
   ssize_t bytes_sent = 0;
-  ssize_t total_bytes_sent = 0;
   ssize_t request_len = sizeof(HTTP_REQ);
 
-  while (total_bytes_sent < request_len) {
-    bytes_sent =
-        send(s, HTTP_REQ + total_bytes_sent, request_len - total_bytes_sent, 0);
-    if (bytes_sent <= 0) {
-      perror("send");
-      close(s);
-      return -1;
-    }
-    total_bytes_sent += bytes_sent;
-  }
+  while ((bytes_sent += send(s, HTTP_REQ + bytes_sent, request_len - bytes_sent,0)) < request_len);
 
   ssize_t bytes_received = INT_MAX;
   int total_bytes = 0;
   int tag_count = 0;
   int leftover = window_size;
 
-
-  while (bytes_received > 0) {
-    bytes_received = recv(s, read_buf, leftover, 0);
+  while ((bytes_received = recv(s, window + (window_size - leftover), leftover, 0)) > 0) {
     total_bytes += bytes_received;
-    memcpy(window + (window_size - leftover), read_buf, bytes_received);
     leftover -= bytes_received;
 
-    if(leftover == 0) {
+    if (leftover == 0) {
       tag_count += pattern_count(window, "<h1>", window_size);
       leftover = window_size;
     }
@@ -85,14 +73,12 @@ int main(int argc, char **argv) {
     tag_count += pattern_count(window, "<h1>", window_size - leftover);
   }
 
-
   printf("Number of <h1> tags: %d\n", tag_count);
   printf("Number of bytes: %d\n", total_bytes);
   close(s);
 
   return 0;
 }
-
 
 /**
  * Counts the occurrences of `pattern` in `buffer`.
