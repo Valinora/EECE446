@@ -69,18 +69,20 @@ int main(int argc, char **argv) {
   int leftover = window_size;
 
 
-  while ( bytes_received > 0) {
+  while (bytes_received > 0) {
     bytes_received = recv(s, read_buf, leftover, 0);
     total_bytes += bytes_received;
     memcpy(window + (window_size - leftover), read_buf, bytes_received);
     leftover -= bytes_received;
 
-    if(leftover == 0 || bytes_received == 0) {
+    if(leftover == 0) {
       tag_count += pattern_count(window, "<h1>", window_size);
       leftover = window_size;
     }
+  }
 
-
+  if (leftover < window_size) {
+    tag_count += pattern_count(window, "<h1>", window_size - leftover);
   }
 
 
