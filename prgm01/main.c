@@ -24,7 +24,7 @@ int pattern_count(const char *buffer, const char *pattern);
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    printf("Usage: ./counter <window size>\n");
+    printf("Usage: %s <window size>\n", argv[0]);
     return -1;
   }
 
@@ -98,11 +98,16 @@ int main(int argc, char **argv) {
   return 0;
 }
 
+
+/**
+ * Counts the occurrences of `pattern` in `buffer`.
+ */
 int pattern_count(const char *buffer, const char *pattern) {
   int count = 0;
   const char *tmp = buffer;
   while ((tmp = strstr(tmp, pattern)) != NULL) {
     count++;
+    // Move past the current match
     tmp += strlen(pattern);
   }
 
