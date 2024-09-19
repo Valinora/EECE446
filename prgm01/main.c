@@ -24,29 +24,28 @@ int pattern_count(const char *buffer, const char *pattern, int length);
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    printf("Usage: %s <window size>\n", argv[0]);
-    return -1;
+    fprintf(stderr, "Usage: %s <window size>\n", argv[0]);
+    return EXIT_FAILURE;
   }
 
   int window_size = atoi(argv[1]);
 
   if (window_size <= 3) {
-    printf("Window size must be an integer >= 3.\n");
-    return -1;
+    fprintf(stderr, "Window size must be an integer >= 3.\n");
+    return EXIT_FAILURE;
   }
 
   // "Globals"
   int s;
   const char *host = "www.ecst.csuchico.edu";
   const char *port = "80";
-  char HTTP_REQ[] = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
+  const char HTTP_REQ[] = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
 
   char window[window_size + 1];
-  // char read_buf[window_size];
 
   /* Lookup IP and connect to server */
   if ((s = lookup_and_connect(host, port)) < 0) {
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   ssize_t bytes_sent = 0;
@@ -69,6 +68,9 @@ int main(int argc, char **argv) {
     }
   }
 
+  // When there's remaining bytes < window_size left on the wire, the loop above
+  // exits, but we still need to check this smaller window.
+  // TODO: Better loop logic to handle this inside loop body?
   if (leftover < window_size) {
     tag_count += pattern_count(window, "<h1>", window_size - leftover);
   }
@@ -77,7 +79,7 @@ int main(int argc, char **argv) {
   printf("Number of bytes: %d\n", total_bytes);
   close(s);
 
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 /**
