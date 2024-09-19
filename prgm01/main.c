@@ -19,10 +19,14 @@
  * Returns a connected socket descriptor or -1 on error. Caller is responsible
  * for closing the returned socket.
  */
-int lookup_and_connect(const char *host, const char *service);
-int pattern_count(const char *buffer, const char *pattern, int length);
+int lookup_and_connect(const char* host, const char* service);
 
-int main(int argc, char **argv) {
+/**
+ * Counts the occurrences of `pattern` in `buffer`.
+ */
+int pattern_count(const char* buffer, const char* pattern, int length);
+
+int main(int argc, char** argv) {
   if (argc < 2) {
     fprintf(stderr, "Usage: %s <window size>\n", argv[0]);
     return EXIT_FAILURE;
@@ -37,8 +41,8 @@ int main(int argc, char **argv) {
 
   // "Globals"
   int s;
-  const char *host = "www.ecst.csuchico.edu";
-  const char *port = "80";
+  const char* host = "www.ecst.csuchico.edu";
+  const char* port = "80";
   const char HTTP_REQ[] = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
 
   char window[window_size + 1];
@@ -51,9 +55,9 @@ int main(int argc, char **argv) {
   ssize_t bytes_sent = 0;
   ssize_t request_len = sizeof(HTTP_REQ);
 
-  while ((bytes_sent += send(s, HTTP_REQ + bytes_sent, request_len - bytes_sent,0)) < request_len);
+  while ((bytes_sent += send(s, HTTP_REQ + bytes_sent, request_len - bytes_sent, 0)) < request_len);
 
-  ssize_t bytes_received = INT_MAX;
+  ssize_t bytes_received = 0;
   int total_bytes = 0;
   int tag_count = 0;
   int leftover = window_size;
@@ -68,8 +72,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  // When there's remaining bytes < window_size left on the wire, the loop above
-  // exits, but we still need to check this smaller window.
+  // When there's remaining bytes < window_size left on the wire, the loop
+  // above exits, but we still need to check this smaller window.
   // TODO: Better loop logic to handle this inside loop body?
   if (leftover < window_size) {
     tag_count += pattern_count(window, "<h1>", window_size - leftover);
@@ -82,13 +86,10 @@ int main(int argc, char **argv) {
   return EXIT_SUCCESS;
 }
 
-/**
- * Counts the occurrences of `pattern` in `buffer`.
- */
-int pattern_count(const char *buffer, const char *pattern, int length) {
+int pattern_count(const char* buffer, const char* pattern, int length) {
   int count = 0;
-  const char *start = buffer;
-  const char *end = buffer + length;
+  const char* start = buffer;
+  const char* end = buffer + length;
   while ((start = strstr(start, pattern)) != NULL && start < end) {
     count++;
     // Move past the current match
@@ -98,7 +99,7 @@ int pattern_count(const char *buffer, const char *pattern, int length) {
   return count;
 }
 
-int lookup_and_connect(const char *host, const char *service) {
+int lookup_and_connect(const char* host, const char* service) {
   struct addrinfo hints;
   struct addrinfo *rp, *result;
   int s;
