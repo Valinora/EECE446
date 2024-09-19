@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
   char HTTP_REQ[] = "GET /~kkredo/file.html HTTP/1.0\r\n\r\n";
 
   char window[window_size + 1];
-  char read_buf[window_size];
+  // char read_buf[window_size];
 
   /* Lookup IP and connect to server */
   if ((s = lookup_and_connect(host, port)) < 0) {
