@@ -1,5 +1,5 @@
 FLAGS = -Wall -Wextra -g
-NAME = p2pclient
+NAME = peer
 
 main: main.o utilities.o
 	gcc $(FLAGS) -o $(NAME) main.o utilities.o
