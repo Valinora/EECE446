@@ -79,3 +79,25 @@ int lookup_and_connect(const char *host, const char *service) {
 
   return s;
 }
+
+string readline() {
+  size_t len = 0;
+  ssize_t read = 0;
+  char *buf = NULL;
+  read = getline(&buf, &len, stdin);
+
+  if (read == -1) {
+    perror("getline");
+    free(buf);
+    return (string){.buf = NULL, .len = 0};
+  }
+
+  // Replace the trailing newline from getline
+  if (buf[read - 1] == '\n') {
+    buf[read - 1] = '\0';
+    --read;
+  }
+
+  string out = (string){.buf = buf, .len = read};
+  return out;
+}

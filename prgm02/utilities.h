@@ -1,6 +1,8 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -10,6 +12,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+typedef struct {
+    char* buf;
+    ptrdiff_t len;
+} string;
 
 /**
  * @brief Receives a specified number of bytes from a socket.
@@ -38,11 +45,18 @@ int recv_all(int s, uint8_t* buff, ssize_t len);
  */
 int send_all(int s, char *buf, int len);
 
-/*
+/**
  * Lookup a host IP address and connect to it using service. Arguments match the
  * first two arguments to getaddrinfo(3).
  *
- * Returns a connected socket descriptor or -1 on error. Caller is responsible
+ * @return a connected socket descriptor or -1 on error. Caller is responsible
  * for closing the returned socket.
  */
 int lookup_and_connect(const char* host, const char* service);
+
+/**
+ * Wrapper around getline that replaces the trailing `\n` with a `\0`, shortening
+ * input by 1.
+ * @return String struct, with allocated memory, containing the user input.
+ */
+string readline();
