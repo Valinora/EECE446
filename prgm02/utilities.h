@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+// INVARIANT: len will always include the null terminator.
 typedef struct {
     char* buf;
     ptrdiff_t len;
