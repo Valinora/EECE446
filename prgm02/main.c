@@ -1,10 +1,11 @@
-#include "utilities.h"
 #include <complex.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "utilities.h"
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -44,54 +45,53 @@ typedef struct {
  * Returns a pointer to an allocated buffer that contains
  * the network representation of a Packet.
  */
-char *packettons(Packet packet) {
+char* packettons(Packet packet) {
 #define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
   size_t size = sizeof(packet.tag);
   switch (packet.tag) {
-  case JOIN:
-    size += sizeof(packet.body.join.peer_id);
-    break;
-  case PUBLISH:
-    size += sizeof(packet.body.publish.count);
-    for (uint32_t i = 0; i < packet.body.publish.count; i++) {
-      size += packet.body.publish.filenames[i].len;
-    }
-    break;
-  case SEARCH:
-    size += packet.body.search.search_term.len;
+    case JOIN:
+      size += sizeof(packet.body.join.peer_id);
+      break;
+    case PUBLISH:
+      size += sizeof(packet.body.publish.count);
+      for (uint32_t i = 0; i < packet.body.publish.count; i++) {
+        size += packet.body.publish.filenames[i].len;
+      }
+      break;
+    case SEARCH:
+      size += packet.body.search.search_term.len;
   }
 
-  char *buffer = (char *)malloc(size);
+  char* buffer = (char*)malloc(size);
   if (buffer == NULL) {
     return NULL;
   }
 
-  char *ptr = buffer;
+  char* ptr = buffer;
   qcopy(ptr, packet.tag);
   ptr += sizeof(packet.tag);
 
   switch (packet.tag) {
-  case JOIN:
-    qcopy(ptr, packet.body.join.peer_id);
-    break;
-  case PUBLISH:
-    qcopy(ptr, packet.body.publish.count);
-    for (uint32_t i = 0; i < packet.body.publish.count; i++) {
-      ptrdiff_t len = packet.body.publish.filenames[i].len;
-      memcpy(ptr, packet.body.publish.filenames[i].buf, len);
-      ptr += len;
-    }
-    break;
-  case SEARCH:
-    memcpy(ptr, packet.body.search.search_term.buf,
-           packet.body.search.search_term.len);
-    break;
+    case JOIN:
+      qcopy(ptr, packet.body.join.peer_id);
+      break;
+    case PUBLISH:
+      qcopy(ptr, packet.body.publish.count);
+      for (uint32_t i = 0; i < packet.body.publish.count; i++) {
+        ptrdiff_t len = packet.body.publish.filenames[i].len;
+        memcpy(ptr, packet.body.publish.filenames[i].buf, len);
+        ptr += len;
+      }
+      break;
+    case SEARCH:
+      memcpy(ptr, packet.body.search.search_term.buf, packet.body.search.search_term.len);
+      break;
   }
 
   return buffer;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   if (argc < 4) {
     fprintf(stderr, "Usage: %s <registry> <port_number> <peer_id>\n", argv[0]);
     return (EXIT_FAILURE);
@@ -100,8 +100,9 @@ int main(int argc, char *argv[]) {
   // Is there a way to check this without a useless conversion?
   int port = atoi(argv[2]);
   if (port < 2000 || port > 65535) {
-    fprintf(stderr, "Invalid port number. Port must be between 2000 and 65535 "
-                    "inclusive.\n");
+    fprintf(stderr,
+            "Invalid port number. Port must be between 2000 and 65535 "
+            "inclusive.\n");
     return (EXIT_FAILURE);
   }
 
@@ -122,7 +123,6 @@ int main(int argc, char *argv[]) {
   int exit = 0;
 
   while (!exit) {
-
     printf("Please enter a command, one of JOIN, SEARCH, PUBLISH, or EXIT: ");
     string cmd_input = readline();
 

@@ -1,6 +1,6 @@
 #include "utilities.h"
 
-int recv_all(int socket, uint8_t *buff, ssize_t len) {
+int recv_all(int socket, uint8_t* buff, ssize_t len) {
   int bytes_received;
   int total_received = 0;
   int leftover = len;
@@ -21,7 +21,7 @@ int recv_all(int socket, uint8_t *buff, ssize_t len) {
   return total_received;
 }
 
-int send_all(int s, char *buf, int len) {
+int send_all(int s, char* buf, int len) {
   int total = 0;
   int bytesleft = len;
   int n;
@@ -42,7 +42,7 @@ int send_all(int s, char *buf, int len) {
   return total;
 }
 
-int lookup_and_connect(const char *host, const char *service) {
+int lookup_and_connect(const char* host, const char* service) {
   struct addrinfo hints;
   struct addrinfo *rp, *result;
   int s;
@@ -83,7 +83,7 @@ int lookup_and_connect(const char *host, const char *service) {
 string readline() {
   size_t len = 0;
   ssize_t read = 0;
-  char *buf = NULL;
+  char* buf = NULL;
   read = getline(&buf, &len, stdin);
 
   if (read == -1) {

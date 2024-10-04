@@ -1,13 +1,10 @@
 #pragma once
 
+#include <netdb.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <stdio.h>
-#include <netdb.h>
-#include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -15,8 +12,8 @@
 
 // INVARIANT: len will always include the null terminator.
 typedef struct {
-    char* buf;
-    ptrdiff_t len;
+  char* buf;
+  ptrdiff_t len;
 } string;
 
 /**
@@ -44,7 +41,7 @@ int recv_all(int s, uint8_t* buff, ssize_t len);
  * @param len The length of the buffer.
  * @return The total number of bytes sent, or a negative value if an error occurs.
  */
-int send_all(int s, char *buf, int len);
+int send_all(int s, char* buf, int len);
 
 /**
  * Lookup a host IP address and connect to it using service. Arguments match the
