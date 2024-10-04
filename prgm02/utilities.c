@@ -95,7 +95,6 @@ string readline() {
   // Replace the trailing newline from getline
   if (buf[read - 1] == '\n') {
     buf[read - 1] = '\0';
-    --read;
   }
 
   string out = (string){.buf = buf, .len = read};
