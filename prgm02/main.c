@@ -13,7 +13,7 @@
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
-enum Action : uint8_t {
+enum Action {
   JOIN = 0,
   PUBLISH,
   SEARCH,
@@ -55,7 +55,7 @@ typedef struct {
  */
 NetBuffer packet_to_netbuf(Packet packet) {
 #define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
-  size_t size = sizeof(packet.tag);
+  size_t size = sizeof(uint8_t);
   switch (packet.tag) {
     case JOIN:
       size += sizeof(packet.body.join.peer_id);
@@ -76,8 +76,8 @@ NetBuffer packet_to_netbuf(Packet packet) {
   }
 
   char* ptr = buffer;
-  qcopy(ptr, packet.tag);
-  ptr += sizeof(packet.tag);
+  memcpy(ptr, &packet.tag, sizeof(uint8_t));
+  ptr += sizeof(uint8_t);
 
   switch (packet.tag) {
     case JOIN: {
