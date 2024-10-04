@@ -1,7 +1,10 @@
 #include "utilities.h"
 #include <complex.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -18,11 +21,11 @@ typedef struct {
 
 typedef struct {
   uint32_t count;
-  char *filenames[];
+  string filenames[];
 } PublishBody;
 
 typedef struct {
-  char *search_term;
+  string search_term;
 } SearchBody;
 
 // Thanks to padding, the bit layout here will not match our wire format.
@@ -37,8 +40,56 @@ typedef struct {
   } body;
 } Packet;
 
-void packet_dump(const Packet *packet);
-// size_t readline(char **buf);
+/**
+ * Returns a pointer to an allocated buffer that contains
+ * the network representation of a Packet.
+ */
+char *packettons(Packet packet) {
+#define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
+  size_t size = sizeof(packet.tag);
+  switch (packet.tag) {
+  case JOIN:
+    size += sizeof(packet.body.join.peer_id);
+    break;
+  case PUBLISH:
+    size += sizeof(packet.body.publish.count);
+    for (uint32_t i = 0; i < packet.body.publish.count; i++) {
+      size += packet.body.publish.filenames[i].len;
+    }
+    break;
+  case SEARCH:
+    size += packet.body.search.search_term.len;
+  }
+
+  char *buffer = (char *)malloc(size);
+  if (buffer == NULL) {
+    return NULL;
+  }
+
+  char *ptr = buffer;
+  qcopy(ptr, packet.tag);
+  ptr += sizeof(packet.tag);
+
+  switch (packet.tag) {
+  case JOIN:
+    qcopy(ptr, packet.body.join.peer_id);
+    break;
+  case PUBLISH:
+    qcopy(ptr, packet.body.publish.count);
+    for (uint32_t i = 0; i < packet.body.publish.count; i++) {
+      ptrdiff_t len = packet.body.publish.filenames[i].len;
+      memcpy(ptr, packet.body.publish.filenames[i].buf, len);
+      ptr += len;
+    }
+    break;
+  case SEARCH:
+    memcpy(ptr, packet.body.search.search_term.buf,
+           packet.body.search.search_term.len);
+    break;
+  }
+
+  return buffer;
+}
 
 int main(int argc, char *argv[]) {
   if (argc < 4) {
@@ -63,7 +114,7 @@ int main(int argc, char *argv[]) {
 
   int s;
 
-  if ((s = lookup_and_connect(argv[1], argv[2])) < 0 ) {
+  if ((s = lookup_and_connect(argv[1], argv[2])) < 0) {
     fprintf(stderr, "Unable to connect to host \"%s\". Exiting.\n", argv[1]);
     return (EXIT_FAILURE);
   }
@@ -102,14 +153,4 @@ int main(int argc, char *argv[]) {
   }
 
   return 0;
-}
-
-void packet_dump(const Packet *packet) {
-  const uint8_t *bytes = (const uint8_t *)packet;
-  ssize_t size = sizeof(Packet);
-
-  for (ssize_t i = 0; i < size; i++) {
-    printf("%02x ", bytes[i]);
-  }
-  printf("\n");
 }
