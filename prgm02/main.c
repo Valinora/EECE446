@@ -1,4 +1,7 @@
+#include <bits/types/struct_iovec.h>
 #include <complex.h>
+#include <dirent.h>
+#include <netinet/in.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -22,7 +25,7 @@ typedef struct {
 
 typedef struct {
   uint32_t count;
-  string filenames[];
+  string* filenames;
 } PublishBody;
 
 typedef struct {
@@ -41,11 +44,16 @@ typedef struct {
   } body;
 } Packet;
 
+typedef struct {
+  char* buf;
+  size_t len;
+} NetworkPacket;
+
 /**
  * Returns a pointer to an allocated buffer that contains
  * the network representation of a Packet.
  */
-char* packettons(Packet packet) {
+NetworkPacket packettons(Packet packet) {
 #define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
   size_t size = sizeof(packet.tag);
   switch (packet.tag) {
@@ -64,7 +72,7 @@ char* packettons(Packet packet) {
 
   char* buffer = (char*)malloc(size);
   if (buffer == NULL) {
-    return NULL;
+    return (NetworkPacket){.buf = NULL, .len = 0};
   }
 
   char* ptr = buffer;
@@ -72,23 +80,35 @@ char* packettons(Packet packet) {
   ptr += sizeof(packet.tag);
 
   switch (packet.tag) {
-    case JOIN:
-      qcopy(ptr, packet.body.join.peer_id);
+    case JOIN: {
+      uint32_t peer_id = htonl(packet.body.join.peer_id);
+      qcopy(ptr, peer_id);
       break;
-    case PUBLISH:
-      qcopy(ptr, packet.body.publish.count);
+    }
+    case PUBLISH: {
+      uint32_t count = htonl(packet.body.publish.count);
+      qcopy(ptr, count);
+      ptr += sizeof(count);
       for (uint32_t i = 0; i < packet.body.publish.count; i++) {
         ptrdiff_t len = packet.body.publish.filenames[i].len;
         memcpy(ptr, packet.body.publish.filenames[i].buf, len);
         ptr += len;
       }
       break;
+    }
     case SEARCH:
       memcpy(ptr, packet.body.search.search_term.buf, packet.body.search.search_term.len);
       break;
   }
 
-  return buffer;
+  return (NetworkPacket){.buf = buffer, .len = size};
+}
+
+void dump_packet(const NetworkPacket* packet) {
+  for (size_t i = 0; i < packet->len; i++) {
+    printf("%02x ", packet->buf[i]);
+  }
+  printf("\n");
 }
 
 int main(int argc, char* argv[]) {
@@ -115,10 +135,10 @@ int main(int argc, char* argv[]) {
 
   int s;
 
-  if ((s = lookup_and_connect(argv[1], argv[2])) < 0) {
-    fprintf(stderr, "Unable to connect to host \"%s\". Exiting.\n", argv[1]);
-    return (EXIT_FAILURE);
-  }
+  // if ((s = lookup_and_connect(argv[1], argv[2])) < 0) {
+  //   fprintf(stderr, "Unable to connect to host \"%s\". Exiting.\n", argv[1]);
+  //   return (EXIT_FAILURE);
+  // }
 
   int exit = 0;
 
@@ -134,19 +154,38 @@ int main(int argc, char* argv[]) {
     }
 
     if (strcmp(cmd_input.buf, "JOIN") == 0) {
-      // do join
+      JoinBody join_body = {.peer_id = peer_id};
+      Packet packet = {.tag = JOIN, .body.join = join_body};
+      NetworkPacket np = packettons(packet);
+
+      dump_packet(&np);
+      free(np.buf);
     }
 
     if (strcmp(cmd_input.buf, "SEARCH") == 0) {
       printf("Please enter a filename to search for: ");
       // char* file_name = NULL;
-      string file_name = readline();
+      string search_term = readline();
 
-      printf("%s\n", file_name.buf);
+      SearchBody search_body = {.search_term = search_term};
+      Packet packet = {.tag = SEARCH, .body.search = search_body};
+      NetworkPacket np = packettons(packet);
+
+      dump_packet(&np);
+      free(np.buf);
     }
 
     if (strcmp(cmd_input.buf, "PUBLISH") == 0) {
-      // do publish
+      string* test_files = (string*)malloc(2 * sizeof(string));
+      test_files[0] = (string){.buf = "a.txt", .len = 6};
+      test_files[1] = (string){.buf = "B.pdf", .len = 6};
+
+      PublishBody publish_body = {.count = 2, .filenames = test_files};
+      Packet packet = {.tag = PUBLISH, .body.publish = publish_body};
+      NetworkPacket np = packettons(packet);
+
+      dump_packet(&np);
+      free(np.buf);
     }
 
     free(cmd_input.buf);
