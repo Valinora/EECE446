@@ -47,13 +47,13 @@ typedef struct {
 typedef struct {
   char* buf;
   size_t len;
-} NetworkPacket;
+} NetBuffer;
 
 /**
  * Returns a pointer to an allocated buffer that contains
  * the network representation of a Packet.
  */
-NetworkPacket packettons(Packet packet) {
+NetBuffer packet_to_netbuf(Packet packet) {
 #define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
   size_t size = sizeof(packet.tag);
   switch (packet.tag) {
@@ -72,7 +72,7 @@ NetworkPacket packettons(Packet packet) {
 
   char* buffer = (char*)malloc(size);
   if (buffer == NULL) {
-    return (NetworkPacket){.buf = NULL, .len = 0};
+    return (NetBuffer){.buf = NULL, .len = 0};
   }
 
   char* ptr = buffer;
@@ -101,10 +101,10 @@ NetworkPacket packettons(Packet packet) {
       break;
   }
 
-  return (NetworkPacket){.buf = buffer, .len = size};
+  return (NetBuffer){.buf = buffer, .len = size};
 }
 
-void dump_packet(const NetworkPacket* packet) {
+void dump_packet(const NetBuffer* packet) {
   for (size_t i = 0; i < packet->len; i++) {
     printf("%02x ", packet->buf[i]);
   }
@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
     return (EXIT_FAILURE);
   }
 
-  int s;
+  // int s;
 
   // if ((s = lookup_and_connect(argv[1], argv[2])) < 0) {
   //   fprintf(stderr, "Unable to connect to host \"%s\". Exiting.\n", argv[1]);
@@ -156,10 +156,10 @@ int main(int argc, char* argv[]) {
     if (strcmp(cmd_input.buf, "JOIN") == 0) {
       JoinBody join_body = {.peer_id = peer_id};
       Packet packet = {.tag = JOIN, .body.join = join_body};
-      NetworkPacket np = packettons(packet);
+      NetBuffer nb = packet_to_netbuf(packet);
 
-      dump_packet(&np);
-      free(np.buf);
+      dump_packet(&nb);
+      free(nb.buf);
     }
 
     if (strcmp(cmd_input.buf, "SEARCH") == 0) {
@@ -169,10 +169,10 @@ int main(int argc, char* argv[]) {
 
       SearchBody search_body = {.search_term = search_term};
       Packet packet = {.tag = SEARCH, .body.search = search_body};
-      NetworkPacket np = packettons(packet);
+      NetBuffer nb = packet_to_netbuf(packet);
 
-      dump_packet(&np);
-      free(np.buf);
+      dump_packet(&nb);
+      free(nb.buf);
     }
 
     if (strcmp(cmd_input.buf, "PUBLISH") == 0) {
@@ -182,10 +182,10 @@ int main(int argc, char* argv[]) {
 
       PublishBody publish_body = {.count = 2, .filenames = test_files};
       Packet packet = {.tag = PUBLISH, .body.publish = publish_body};
-      NetworkPacket np = packettons(packet);
+      NetBuffer nb = packet_to_netbuf(packet);
 
-      dump_packet(&np);
-      free(np.buf);
+      dump_packet(&nb);
+      free(nb.buf);
     }
 
     free(cmd_input.buf);
