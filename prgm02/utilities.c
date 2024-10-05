@@ -1,5 +1,7 @@
 #include "utilities.h"
 
+#include <stdint.h>
+
 int recv_all(int socket, uint8_t* buff, ssize_t len) {
   int bytes_received;
   int total_received = 0;
@@ -99,4 +101,35 @@ string readline() {
 
   string out = (string){.buf = buf, .len = read};
   return out;
+}
+
+int32_t read_files(string** out) {
+  DIR* dir = opendir("SharedFiles");
+
+  if (dir == NULL) {
+    fprintf(stderr, "Unable to open directory \"SharedFiles\". Exiting.\n");
+    return -1;
+  }
+
+  struct dirent* entry;
+  uint32_t count = 0;
+
+  while ((entry = readdir(dir))) {
+    // Ignore directories
+    if (entry->d_type == DT_REG) {
+      if (*out == NULL) {
+        *out = malloc(sizeof(string));
+      } else {
+        *out = realloc(*out, (count + 1) * sizeof(string));
+      }
+
+      string filename = (string){.buf = strdup(entry->d_name), .len = strlen(entry->d_name) + 1};
+      filename.buf[filename.len - 1] = '\0';
+      (*out)[count] = filename;
+      count++;
+    }
+  }
+
+  closedir(dir);
+  return count;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <dirent.h>
 #include <netdb.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -58,3 +59,10 @@ int lookup_and_connect(const char* host, const char* service);
  * @return String struct, with allocated memory, containing the user input.
  */
 string readline();
+
+
+/**
+ * Read all files in the SharedFiles directory and return them as an array of
+ * strings.
+ */
+int32_t read_files(string** out);

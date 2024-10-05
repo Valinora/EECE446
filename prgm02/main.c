@@ -154,8 +154,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (strcmp(cmd_input.buf, "JOIN") == 0) {
-      JoinBody join_body = {.peer_id = peer_id};
-      Packet packet = {.tag = JOIN, .body.join = join_body};
+      Packet packet = {.tag = JOIN, .body.join = {.peer_id = peer_id}};
       NetBuffer nb = packet_to_netbuf(packet);
 
       dump_packet(&nb);
@@ -167,8 +166,7 @@ int main(int argc, char* argv[]) {
       // char* file_name = NULL;
       string search_term = readline();
 
-      SearchBody search_body = {.search_term = search_term};
-      Packet packet = {.tag = SEARCH, .body.search = search_body};
+      Packet packet = {.tag = SEARCH, .body.search = {.search_term = search_term}};
       NetBuffer nb = packet_to_netbuf(packet);
 
       dump_packet(&nb);
@@ -176,16 +174,18 @@ int main(int argc, char* argv[]) {
     }
 
     if (strcmp(cmd_input.buf, "PUBLISH") == 0) {
-      string* test_files = (string*)malloc(2 * sizeof(string));
-      test_files[0] = (string){.buf = "a.txt", .len = 6};
-      test_files[1] = (string){.buf = "B.pdf", .len = 6};
+      string* files = NULL;
+      int32_t count = read_files(&files);
 
-      PublishBody publish_body = {.count = 2, .filenames = test_files};
-      Packet packet = {.tag = PUBLISH, .body.publish = publish_body};
+      if (count < 0) {
+        fprintf(stderr, "Failed to read files. Exiting.\n");
+        return (EXIT_FAILURE);
+      }
+
+      Packet packet = {.tag = PUBLISH, .body.publish = {.count = count, .filenames = files}};
       NetBuffer nb = packet_to_netbuf(packet);
 
       dump_packet(&nb);
-      free(nb.buf);
     }
 
     free(cmd_input.buf);
