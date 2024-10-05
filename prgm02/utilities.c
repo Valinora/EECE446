@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-int recv_all(int socket, uint8_t* buff, ssize_t len) {
+int recv_all(int socket, char* buff, ssize_t len) {
   int bytes_received;
   int total_received = 0;
   int leftover = len;

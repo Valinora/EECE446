@@ -29,7 +29,7 @@ typedef struct {
  * @param len The number of bytes to read from the socket.
  * @return The total number of bytes received on success, or -1 on error.
  */
-int recv_all(int s, uint8_t* buff, ssize_t len);
+int recv_all(int s, char* buff, ssize_t len);
 
 /**
  * Sends all the data in the buffer through the specified socket.

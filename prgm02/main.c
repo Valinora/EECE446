@@ -49,6 +49,12 @@ typedef struct {
   size_t len;
 } NetBuffer;
 
+typedef struct {
+  uint32_t peer_id;
+  uint32_t ip;
+  uint16_t port;
+} SearchReponse;
+
 /**
  * Returns a pointer to an allocated buffer that contains
  * the network representation of a Packet.
@@ -133,12 +139,12 @@ int main(int argc, char* argv[]) {
     return (EXIT_FAILURE);
   }
 
-  // int s;
+  int s;
 
-  // if ((s = lookup_and_connect(argv[1], argv[2])) < 0) {
-  //   fprintf(stderr, "Unable to connect to host \"%s\". Exiting.\n", argv[1]);
-  //   return (EXIT_FAILURE);
-  // }
+  if ((s = lookup_and_connect(argv[1], argv[2])) < 0) {
+    fprintf(stderr, "Unable to connect to host \"%s\". Exiting.\n", argv[1]);
+    return (EXIT_FAILURE);
+  }
 
   int exit = 0;
 
@@ -157,7 +163,8 @@ int main(int argc, char* argv[]) {
       Packet packet = {.tag = JOIN, .body.join = {.peer_id = peer_id}};
       NetBuffer nb = packet_to_netbuf(packet);
 
-      dump_packet(&nb);
+      // dump_packet(&nb);
+      send_all(s, nb.buf, nb.len);
       free(nb.buf);
     }
 
@@ -169,8 +176,27 @@ int main(int argc, char* argv[]) {
       Packet packet = {.tag = SEARCH, .body.search = {.search_term = search_term}};
       NetBuffer nb = packet_to_netbuf(packet);
 
-      dump_packet(&nb);
+      // dump_packet(&nb);
+      int sent = send_all(s, nb.buf, nb.len);
+      if (sent < 0) {
+        fprintf(stderr, "Failed to send search term. Exiting.\n");
+        return (EXIT_FAILURE);
+      }
       free(nb.buf);
+
+      char* buf = malloc(10);
+      if(buf == NULL) {
+        fprintf(stderr, "Failed to allocate memory for buffer. Exiting.\n");
+        return (EXIT_FAILURE);
+      }
+      int received = recv_all(s, buf, 10);
+
+      if (received < 0) {
+        fprintf(stderr, "Failed to receive search response. Exiting.\n");
+        return (EXIT_FAILURE);
+      }
+
+      dump_packet(&(NetBuffer){.buf = buf, .len = 10});
     }
 
     if (strcmp(cmd_input.buf, "PUBLISH") == 0) {
@@ -185,7 +211,8 @@ int main(int argc, char* argv[]) {
       Packet packet = {.tag = PUBLISH, .body.publish = {.count = count, .filenames = files}};
       NetBuffer nb = packet_to_netbuf(packet);
 
-      dump_packet(&nb);
+      // dump_packet(&nb);
+      send_all(s, nb.buf, nb.len);
     }
 
     free(cmd_input.buf);
