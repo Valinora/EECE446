@@ -34,6 +34,9 @@ typedef struct {
 
 // Thanks to padding, the bit layout here will not match our wire format.
 // We'll still need to memcpy into a byte buffer.
+// Though there's always __attribute__((packed))...
+// Of course, that doesn't account for endianness.
+// ¯\_(ツ)_/¯
 typedef struct {
   enum Action tag;
 
@@ -146,12 +149,8 @@ int main(int argc, char* argv[]) {
         printf("File not indexed by registry.\n");
       } else {
         printf("File found at\n");
-        char* peer_ip = malloc(16);
-        if (peer_ip == NULL) {
-          fprintf(stderr, "Failed to allocate memory for peer ip. Exiting.\n");
-          return (EXIT_FAILURE);
-        }
-        inet_ntop(AF_INET, &response.ip, peer_ip, 16);
+        char peer_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &response.ip, peer_ip, INET_ADDRSTRLEN);
         printf("\tPeer %u\n", response.peer_id);
         printf("\t%s:%d\n", peer_ip, response.port);
       }
@@ -213,6 +212,7 @@ SearchResponse p2p_search(string search_term, int s) {
   return response;
 }
 
+// This would be a lot easier if we used a packed struct.
 NetBuffer packet_to_netbuf(Packet packet) {
 #define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
   size_t size = sizeof(uint8_t);
