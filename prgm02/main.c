@@ -133,10 +133,10 @@ int main(int argc, char* argv[]) {
     return (EXIT_FAILURE);
   }
 
-  int peer_id = atoi(argv[3]);
+  uint32_t peer_id = strtoul(argv[3], NULL, 10);
 
   if (peer_id <= 0) {
-    fprintf(stderr, "Invalid peer id: \"%d\". Exiting,\n", peer_id);
+    fprintf(stderr, "Invalid peer id: \"%d\". Exiting.\n", peer_id);
     return (EXIT_FAILURE);
   }
 
@@ -201,6 +201,8 @@ int main(int argc, char* argv[]) {
       memcpy(&response.peer_id, buf, sizeof(uint32_t));
       memcpy(&response.ip, buf + sizeof(uint32_t), sizeof(uint32_t));
       memcpy(&response.port, buf + (2 * sizeof(uint32_t)), sizeof(uint16_t));
+      response.peer_id = ntohl(response.peer_id);
+      response.port = ntohs(response.port);
 
       if (response.peer_id == 0) {
         printf("File not indexed by registry.\n");
@@ -212,7 +214,8 @@ int main(int argc, char* argv[]) {
           return (EXIT_FAILURE);
         }
         inet_ntop(AF_INET, &response.ip, peer_ip, 16);
-        printf("\tPeer %s:%d\n", peer_ip, response.port);
+        printf("\tPeer %u\n", response.peer_id);
+        printf("\t%s:%d\n", peer_ip, response.port);
       }
     }
 
