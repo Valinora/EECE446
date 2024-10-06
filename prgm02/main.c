@@ -11,9 +11,6 @@
 
 #include "utilities.h"
 
-#define likely(x) __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-
 // Wish we had C23 on jaguar. Could specify enum size.
 // `enum Action : uint8_t {` my beloved.
 enum Action {
