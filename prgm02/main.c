@@ -190,11 +190,7 @@ SearchResponse p2p_search(string search_term, int s) {
   }
   free(nb.buf);
 
-  uint8_t* response_buf = malloc(10);
-  if (response_buf == NULL) {
-    fprintf(stderr, "Failed to allocate memory for buffer. Exiting.\n");
-    return (SearchResponse){.peer_id = 0};
-  }
+  uint8_t response_buf[10];
   ssize_t received = recv_all(s, response_buf, 10);
 
   if (received < 0) {
