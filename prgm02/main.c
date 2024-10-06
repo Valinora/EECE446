@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <bits/types/struct_iovec.h>
 #include <complex.h>
 #include <dirent.h>
@@ -185,7 +186,7 @@ int main(int argc, char* argv[]) {
       free(nb.buf);
 
       char* buf = malloc(10);
-      if(buf == NULL) {
+      if (buf == NULL) {
         fprintf(stderr, "Failed to allocate memory for buffer. Exiting.\n");
         return (EXIT_FAILURE);
       }
@@ -196,7 +197,23 @@ int main(int argc, char* argv[]) {
         return (EXIT_FAILURE);
       }
 
-      dump_packet(&(NetBuffer){.buf = buf, .len = 10});
+      SearchReponse response;
+      memcpy(&response.peer_id, buf, sizeof(uint32_t));
+      memcpy(&response.ip, buf + sizeof(uint32_t), sizeof(uint32_t));
+      memcpy(&response.port, buf + (2 * sizeof(uint32_t)), sizeof(uint16_t));
+
+      if (response.peer_id == 0) {
+        printf("File not indexed by registry.\n");
+      } else {
+        printf("File found at\n");
+        char* peer_ip = malloc(16);
+        if (peer_ip == NULL) {
+          fprintf(stderr, "Failed to allocate memory for peer ip. Exiting.\n");
+          return (EXIT_FAILURE);
+        }
+        inet_ntop(AF_INET, &response.ip, peer_ip, 16);
+        printf("\tPeer %s:%d\n", peer_ip, response.port);
+      }
     }
 
     if (strcmp(cmd_input.buf, "PUBLISH") == 0) {
