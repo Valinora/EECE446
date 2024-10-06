@@ -185,12 +185,12 @@ int main(int argc, char* argv[]) {
       }
       free(nb.buf);
 
-      char* buf = malloc(10);
-      if (buf == NULL) {
+      uint8_t* response_buf = malloc(10);
+      if (response_buf == NULL) {
         fprintf(stderr, "Failed to allocate memory for buffer. Exiting.\n");
         return (EXIT_FAILURE);
       }
-      int received = recv_all(s, buf, 10);
+      int received = recv_all(s, response_buf, 10);
 
       if (received < 0) {
         fprintf(stderr, "Failed to receive search response. Exiting.\n");
@@ -198,9 +198,9 @@ int main(int argc, char* argv[]) {
       }
 
       SearchReponse response;
-      memcpy(&response.peer_id, buf, sizeof(uint32_t));
-      memcpy(&response.ip, buf + sizeof(uint32_t), sizeof(uint32_t));
-      memcpy(&response.port, buf + (2 * sizeof(uint32_t)), sizeof(uint16_t));
+      memcpy(&response.peer_id, response_buf, sizeof(uint32_t));
+      memcpy(&response.ip, response_buf + sizeof(uint32_t), sizeof(uint32_t));
+      memcpy(&response.port, response_buf + (2 * sizeof(uint32_t)), sizeof(uint16_t));
       response.peer_id = ntohl(response.peer_id);
       response.port = ntohs(response.port);
 
