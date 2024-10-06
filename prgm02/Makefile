@@ -1,4 +1,4 @@
-FLAGS = -Wall -Wextra -g
+FLAGS = -Wall -Wextra -g3 -Wconversion -Wdouble-promotion -Wno-sign-conversion
 NAME = peer
 
 main: main.o utilities.o

@@ -14,6 +14,8 @@
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
+// Wish we had C23 on jaguar. Could specify enum size.
+// `enum Action : uint8_t {` my beloved.
 enum Action {
   JOIN = 0,
   PUBLISH,
@@ -46,7 +48,7 @@ typedef struct {
 } Packet;
 
 typedef struct {
-  char* buf;
+  uint8_t* buf;
   size_t len;
 } NetBuffer;
 
@@ -77,12 +79,12 @@ NetBuffer packet_to_netbuf(Packet packet) {
       size += packet.body.search.search_term.len;
   }
 
-  char* buffer = (char*)malloc(size);
+  uint8_t* buffer = (uint8_t*)malloc(size);
   if (buffer == NULL) {
     return (NetBuffer){.buf = NULL, .len = 0};
   }
 
-  char* ptr = buffer;
+  uint8_t* ptr = buffer;
   memcpy(ptr, &packet.tag, sizeof(uint8_t));
   ptr += sizeof(uint8_t);
 
@@ -124,7 +126,7 @@ int main(int argc, char* argv[]) {
     return (EXIT_FAILURE);
   }
 
-  // Is there a way to check this without a useless conversion?
+  // Is there a way to check this without a conversion we immediately throw away?
   int port = atoi(argv[2]);
   if (port < 2000 || port > 65535) {
     fprintf(stderr,
@@ -133,7 +135,8 @@ int main(int argc, char* argv[]) {
     return (EXIT_FAILURE);
   }
 
-  uint32_t peer_id = strtoul(argv[3], NULL, 10);
+  // Signedness issue. TODO: Fix.
+  uint32_t peer_id = atoi(argv[3]);
 
   if (peer_id <= 0) {
     fprintf(stderr, "Invalid peer id: \"%d\". Exiting.\n", peer_id);
@@ -171,7 +174,6 @@ int main(int argc, char* argv[]) {
 
     if (strcmp(cmd_input.buf, "SEARCH") == 0) {
       printf("Please enter a filename to search for: ");
-      // char* file_name = NULL;
       string search_term = readline();
 
       Packet packet = {.tag = SEARCH, .body.search = {.search_term = search_term}};

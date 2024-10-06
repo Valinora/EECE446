@@ -11,9 +11,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-// INVARIANT: len will always include the null terminator.
+/**
+ * INVARIANT: len will always include the null terminator. (len = strlen(buf) + 1)
+ * 
+ * Ideally, we would migrate from null-terminated strings to length-prefixed strings,
+ * but that's more work than we have time for in this assignment.
+ * This is just a first step.
+ */
 typedef struct {
-  char* buf;
+  char* buf; // I'd love to use uint8_t here, but we're using too many C stdlib functions.
   ptrdiff_t len;
 } string;
 
@@ -29,7 +35,7 @@ typedef struct {
  * @param len The number of bytes to read from the socket.
  * @return The total number of bytes received on success, or -1 on error.
  */
-int recv_all(int s, char* buff, ssize_t len);
+int recv_all(int s, uint8_t* buff, ssize_t len);
 
 /**
  * Sends all the data in the buffer through the specified socket.
@@ -42,7 +48,7 @@ int recv_all(int s, char* buff, ssize_t len);
  * @param len The length of the buffer.
  * @return The total number of bytes sent, or a negative value if an error occurs.
  */
-int send_all(int s, char* buf, int len);
+int send_all(int s, uint8_t* buf, int len);
 
 /**
  * Lookup a host IP address and connect to it using service. Arguments match the
@@ -54,8 +60,7 @@ int send_all(int s, char* buf, int len);
 int lookup_and_connect(const char* host, const char* service);
 
 /**
- * Wrapper around getline that replaces the trailing `\n` with a `\0`, shortening
- * input by 1.
+ * Wrapper around getline that replaces the trailing `\n` with a `\0`
  * @return String struct, with allocated memory, containing the user input.
  */
 string readline();
@@ -64,5 +69,9 @@ string readline();
 /**
  * Read all files in the SharedFiles directory and return them as an array of
  * strings.
+ * Reallocation is used to grow the array as needed.
  */
 int32_t read_files(string** out);
+
+
+string p2p_search(string search_term, int s);
