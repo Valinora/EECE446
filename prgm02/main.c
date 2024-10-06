@@ -52,66 +52,33 @@ typedef struct {
   size_t len;
 } NetBuffer;
 
+/**
+ * Represents a response to a search query.
+ * If all fields are zero, the file was not found.
+ * IP is stored in network byte order.
+ */
 typedef struct {
   uint32_t peer_id;
   uint32_t ip;
   uint16_t port;
-} SearchReponse;
+} SearchResponse;
+
+/**
+ * @brief Performs a peer-to-peer search based on the given search term.
+ *
+ * This function initiates a search to the registry for the given search term.
+ *
+ * @param search_term The term to search for in the peer-to-peer network.
+ * @param s Network socket to send the search request on.
+ * @return SearchResponse The result of the search, encapsulated in a SearchResponse structure.
+ */
+SearchResponse p2p_search(string search_term, int s);
 
 /**
  * Returns a pointer to an allocated buffer that contains
  * the network representation of a Packet.
  */
-NetBuffer packet_to_netbuf(Packet packet) {
-#define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
-  size_t size = sizeof(uint8_t);
-  switch (packet.tag) {
-    case JOIN:
-      size += sizeof(packet.body.join.peer_id);
-      break;
-    case PUBLISH:
-      size += sizeof(packet.body.publish.count);
-      for (uint32_t i = 0; i < packet.body.publish.count; i++) {
-        size += packet.body.publish.filenames[i].len;
-      }
-      break;
-    case SEARCH:
-      size += packet.body.search.search_term.len;
-  }
-
-  uint8_t* buffer = (uint8_t*)malloc(size);
-  if (buffer == NULL) {
-    return (NetBuffer){.buf = NULL, .len = 0};
-  }
-
-  uint8_t* ptr = buffer;
-  memcpy(ptr, &packet.tag, sizeof(uint8_t));
-  ptr += sizeof(uint8_t);
-
-  switch (packet.tag) {
-    case JOIN: {
-      uint32_t peer_id = htonl(packet.body.join.peer_id);
-      qcopy(ptr, peer_id);
-      break;
-    }
-    case PUBLISH: {
-      uint32_t count = htonl(packet.body.publish.count);
-      qcopy(ptr, count);
-      ptr += sizeof(count);
-      for (uint32_t i = 0; i < packet.body.publish.count; i++) {
-        ptrdiff_t len = packet.body.publish.filenames[i].len;
-        memcpy(ptr, packet.body.publish.filenames[i].buf, len);
-        ptr += len;
-      }
-      break;
-    }
-    case SEARCH:
-      memcpy(ptr, packet.body.search.search_term.buf, packet.body.search.search_term.len);
-      break;
-  }
-
-  return (NetBuffer){.buf = buffer, .len = size};
-}
+NetBuffer packet_to_netbuf(Packet packet);
 
 void dump_packet(const NetBuffer* packet) {
   for (size_t i = 0; i < packet->len; i++) {
@@ -176,35 +143,7 @@ int main(int argc, char* argv[]) {
       printf("Please enter a filename to search for: ");
       string search_term = readline();
 
-      Packet packet = {.tag = SEARCH, .body.search = {.search_term = search_term}};
-      NetBuffer nb = packet_to_netbuf(packet);
-
-      // dump_packet(&nb);
-      ssize_t sent = send_all(s, nb.buf, nb.len);
-      if (sent < 0) {
-        fprintf(stderr, "Failed to send search term. Exiting.\n");
-        return (EXIT_FAILURE);
-      }
-      free(nb.buf);
-
-      uint8_t* response_buf = malloc(10);
-      if (response_buf == NULL) {
-        fprintf(stderr, "Failed to allocate memory for buffer. Exiting.\n");
-        return (EXIT_FAILURE);
-      }
-      ssize_t received = recv_all(s, response_buf, 10);
-
-      if (received < 0) {
-        fprintf(stderr, "Failed to receive search response. Exiting.\n");
-        return (EXIT_FAILURE);
-      }
-
-      SearchReponse response;
-      memcpy(&response.peer_id, response_buf, sizeof(uint32_t));
-      memcpy(&response.ip, response_buf + sizeof(uint32_t), sizeof(uint32_t));
-      memcpy(&response.port, response_buf + (2 * sizeof(uint32_t)), sizeof(uint16_t));
-      response.peer_id = ntohl(response.peer_id);
-      response.port = ntohs(response.port);
+      SearchResponse response = p2p_search(search_term, s);
 
       if (response.peer_id == 0) {
         printf("File not indexed by registry.\n");
@@ -241,4 +180,89 @@ int main(int argc, char* argv[]) {
   }
 
   return 0;
+}
+
+SearchResponse p2p_search(string search_term, int s) {
+  Packet packet = {.tag = SEARCH, .body.search = {.search_term = search_term}};
+  NetBuffer nb = packet_to_netbuf(packet);
+
+  // dump_packet(&nb);
+  ssize_t sent = send_all(s, nb.buf, nb.len);
+  if (sent < 0) {
+    fprintf(stderr, "Failed to send search term. Exiting.\n");
+    return (SearchResponse){.peer_id = 0};
+  }
+  free(nb.buf);
+
+  uint8_t* response_buf = malloc(10);
+  if (response_buf == NULL) {
+    fprintf(stderr, "Failed to allocate memory for buffer. Exiting.\n");
+    return (SearchResponse){.peer_id = 0};
+  }
+  ssize_t received = recv_all(s, response_buf, 10);
+
+  if (received < 0) {
+    fprintf(stderr, "Failed to receive search response. Exiting.\n");
+    return (SearchResponse){.peer_id = 0};
+  }
+
+  SearchResponse response;
+  memcpy(&response.peer_id, response_buf, sizeof(uint32_t));
+  memcpy(&response.ip, response_buf + sizeof(uint32_t), sizeof(uint32_t));
+  memcpy(&response.port, response_buf + (2 * sizeof(uint32_t)), sizeof(uint16_t));
+  response.peer_id = ntohl(response.peer_id);
+  response.port = ntohs(response.port);
+
+  return response;
+}
+
+NetBuffer packet_to_netbuf(Packet packet) {
+#define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
+  size_t size = sizeof(uint8_t);
+  switch (packet.tag) {
+    case JOIN:
+      size += sizeof(packet.body.join.peer_id);
+      break;
+    case PUBLISH:
+      size += sizeof(packet.body.publish.count);
+      for (uint32_t i = 0; i < packet.body.publish.count; i++) {
+        size += packet.body.publish.filenames[i].len;
+      }
+      break;
+    case SEARCH:
+      size += packet.body.search.search_term.len;
+  }
+
+  uint8_t* buffer = (uint8_t*)malloc(size);
+  if (buffer == NULL) {
+    return (NetBuffer){.buf = NULL, .len = 0};
+  }
+
+  uint8_t* ptr = buffer;
+  memcpy(ptr, &packet.tag, sizeof(uint8_t));
+  ptr += sizeof(uint8_t);
+
+  switch (packet.tag) {
+    case JOIN: {
+      uint32_t peer_id = htonl(packet.body.join.peer_id);
+      qcopy(ptr, peer_id);
+      break;
+    }
+    case PUBLISH: {
+      uint32_t count = htonl(packet.body.publish.count);
+      qcopy(ptr, count);
+      ptr += sizeof(count);
+      for (uint32_t i = 0; i < packet.body.publish.count; i++) {
+        ptrdiff_t len = packet.body.publish.filenames[i].len;
+        memcpy(ptr, packet.body.publish.filenames[i].buf, len);
+        ptr += len;
+      }
+      break;
+    }
+    case SEARCH:
+      memcpy(ptr, packet.body.search.search_term.buf, packet.body.search.search_term.len);
+      break;
+  }
+
+  return (NetBuffer){.buf = buffer, .len = size};
 }

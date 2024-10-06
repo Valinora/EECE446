@@ -73,5 +73,3 @@ string readline();
  */
 int32_t read_files(string** out);
 
-
-string p2p_search(string search_term, int s);
