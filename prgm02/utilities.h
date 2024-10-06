@@ -35,7 +35,7 @@ typedef struct {
  * @param len The number of bytes to read from the socket.
  * @return The total number of bytes received on success, or -1 on error.
  */
-int recv_all(int s, uint8_t* buff, ssize_t len);
+ssize_t recv_all(int s, uint8_t* buff, ssize_t len);
 
 /**
  * Sends all the data in the buffer through the specified socket.
@@ -48,7 +48,7 @@ int recv_all(int s, uint8_t* buff, ssize_t len);
  * @param len The length of the buffer.
  * @return The total number of bytes sent, or a negative value if an error occurs.
  */
-int send_all(int s, uint8_t* buf, int len);
+ssize_t send_all(int s, uint8_t* buf, ssize_t len);
 
 /**
  * Lookup a host IP address and connect to it using service. Arguments match the

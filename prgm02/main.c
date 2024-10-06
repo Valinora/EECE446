@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
       NetBuffer nb = packet_to_netbuf(packet);
 
       // dump_packet(&nb);
-      int sent = send_all(s, nb.buf, nb.len);
+      ssize_t sent = send_all(s, nb.buf, nb.len);
       if (sent < 0) {
         fprintf(stderr, "Failed to send search term. Exiting.\n");
         return (EXIT_FAILURE);
@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Failed to allocate memory for buffer. Exiting.\n");
         return (EXIT_FAILURE);
       }
-      int received = recv_all(s, response_buf, 10);
+      ssize_t received = recv_all(s, response_buf, 10);
 
       if (received < 0) {
         fprintf(stderr, "Failed to receive search response. Exiting.\n");

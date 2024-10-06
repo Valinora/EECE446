@@ -2,10 +2,10 @@
 
 #include <stdint.h>
 
-int recv_all(int socket, uint8_t* buff, ssize_t len) {
-  int bytes_received;
-  int total_received = 0;
-  int leftover = len;
+ssize_t recv_all(int socket, uint8_t* buff, ssize_t len) {
+  ssize_t bytes_received;
+  ssize_t total_received = 0;
+  ssize_t leftover = len;
 
   while (leftover > 0) {
     bytes_received = recv(socket, buff + total_received, leftover, 0);
@@ -23,10 +23,10 @@ int recv_all(int socket, uint8_t* buff, ssize_t len) {
   return total_received;
 }
 
-int send_all(int s, uint8_t* buf, int len) {
-  int total = 0;
-  int bytesleft = len;
-  int n;
+ssize_t send_all(int s, uint8_t* buf, ssize_t len) {
+  ssize_t total = 0;
+  ssize_t bytesleft = len;
+  ssize_t n;
 
   while (total < len) {
     n = send(s, buf + total, bytesleft, 0);
