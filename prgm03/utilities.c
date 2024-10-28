@@ -1,8 +1,9 @@
 #include "utilities.h"
 
+#include <stddef.h>
 #include <stdint.h>
 
-ssize_t recv_all(int socket, uint8_t* buff, ssize_t len) {
+ssize_t recv_buffer(int socket, uint8_t* buff, ssize_t len) {
   ssize_t bytes_received;
   ssize_t total_received = 0;
   ssize_t leftover = len;
@@ -21,6 +22,27 @@ ssize_t recv_all(int socket, uint8_t* buff, ssize_t len) {
   }
 
   return total_received;
+}
+
+NetBuffer recv_all(int s) {
+  ptrdiff_t total = 0;
+  ssize_t bytesleft = 0;
+  ssize_t n;
+  uint8_t* buf = NULL;
+
+  while (1) {
+    buf = realloc(buf, total + 1024);
+    bytesleft = 1024;
+    n = recv_buffer(s, buf + total, bytesleft);
+    if (n < 0) {
+      free(buf);
+      return (NetBuffer){.buf = NULL, .len = 0, .error = n};
+    } else if (n == 0) {
+      break;
+    }
+  }
+
+  return (NetBuffer){.buf = buf, .len = total, .error = 0};
 }
 
 ssize_t send_all(int s, uint8_t* buf, ssize_t len) {

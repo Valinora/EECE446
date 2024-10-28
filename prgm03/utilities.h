@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stddef.h>
 
 /**
  * INVARIANT: len will always include the null terminator. (len = strlen(buf) + 1)
@@ -35,7 +36,20 @@ typedef struct {
  * @param len The number of bytes to read from the socket.
  * @return The total number of bytes received on success, or -1 on error.
  */
-ssize_t recv_all(int s, uint8_t* buff, ssize_t len);
+ssize_t recv_buffer(int s, uint8_t* buff, ssize_t len);
+
+
+typedef struct {
+  uint8_t* buf;
+  ptrdiff_t len;
+  int error;
+} NetBuffer;
+
+/**
+ * Receives all the data from the specified socket and returns it in a NetBuffer.
+ * And I mean _all_ the data.
+ */
+NetBuffer recv_all(int s);
 
 /**
  * Sends all the data in the buffer through the specified socket.
