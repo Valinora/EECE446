@@ -83,7 +83,7 @@ SearchResponse p2p_search(string search_term, int s);
 NetBuffer packet_to_netbuf(Packet packet);
 
 void dump_packet(const NetBuffer* packet) {
-  for (size_t i = 0; i < packet->len; i++) {
+  for (ssize_t i = 0; i < packet->len; i++) {
     printf("%02x ", packet->buf[i]);
   }
   printf("\n");
@@ -260,6 +260,7 @@ NetBuffer packet_to_netbuf(Packet packet) {
       break;
     case SEARCH:
       size += packet.body.search.search_term.len;
+      break;
     case FETCH: // New!
       size += packet.body.fetch.filename.len;
   }
