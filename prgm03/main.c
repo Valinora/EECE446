@@ -196,6 +196,12 @@ int main(int argc, char* argv[]) {
       }
 
       fwrite(response.buf, 1, response.len, f);
+      // This took me entirely too long to debug.
+      // Tests were failing with truncated files.
+      // Forgot about flushing when writing to a file.
+      // Nevermind the memory leak.
+      // Grrr...
+      fclose(f); // This calls fflush for us.
 
       free(response.buf);
     }
