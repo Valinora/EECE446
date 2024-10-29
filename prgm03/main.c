@@ -283,12 +283,6 @@ FetchResponse p2p_fetch(string search_term, int s) {
   send_all(peer_s, nb.buf, nb.len);
   free(nb.buf);
 
-  NetBuffer file = recv_all(peer_s);
-  if (file.error) {
-    fprintf(stderr, "Failed to receive file. Exiting.\n");
-    return (FetchResponse){.error = 1};
-  }
-
   FetchResponse fetch_response = receive_file(peer_s);
 
   close(peer_s);
