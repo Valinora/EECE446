@@ -40,6 +40,7 @@ NetBuffer recv_all(int s) {
     } else if (n == 0) {
       break;
     }
+    total += n;
   }
 
   return (NetBuffer){.buf = buf, .len = total, .error = 0};

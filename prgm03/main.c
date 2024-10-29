@@ -17,7 +17,7 @@ enum Action {
   JOIN = 0,
   PUBLISH,
   SEARCH,
-  FETCH, // New!
+  FETCH,  // New!
 };
 
 typedef struct {
@@ -50,7 +50,7 @@ typedef struct {
     JoinBody join;
     PublishBody publish;
     SearchBody search;
-    FetchBody fetch; // New!
+    FetchBody fetch;  // New!
   } body;
 } Packet;
 
@@ -65,6 +65,12 @@ typedef struct {
   uint16_t port;
 } SearchResponse;
 
+typedef struct {
+  int8_t error;
+  ptrdiff_t len;
+  uint8_t* buf;
+} FetchResponse;
+
 /**
  * @brief Performs a peer-to-peer search based on the given search term.
  *
@@ -75,6 +81,8 @@ typedef struct {
  * @return SearchResponse The result of the search, encapsulated in a SearchResponse structure.
  */
 SearchResponse p2p_search(string search_term, int s);
+
+FetchResponse p2p_fetch(string search_term, int s);
 
 /**
  * Returns a pointer to an allocated buffer that contains
@@ -124,12 +132,12 @@ int main(int argc, char* argv[]) {
     printf("Please enter a command, one of JOIN, SEARCH, PUBLISH, or EXIT: ");
     string cmd_input = readline();
 
-    if (strcmp(cmd_input.buf, "EXIT") == 0) {
+    if (strncmp(cmd_input.buf, "EXIT", 4) == 0) {
       exit = 1;
       break;
     }
 
-    if (strcmp(cmd_input.buf, "JOIN") == 0) {
+    if (strncmp(cmd_input.buf, "JOIN", 4) == 0) {
       Packet packet = {.tag = JOIN, .body.join = {.peer_id = peer_id}};
       NetBuffer nb = packet_to_netbuf(packet);
 
@@ -137,7 +145,7 @@ int main(int argc, char* argv[]) {
       free(nb.buf);
     }
 
-    if (strcmp(cmd_input.buf, "SEARCH") == 0) {
+    if (strncmp(cmd_input.buf, "SEARCH", 6) == 0) {
       printf("Please enter a filename to search for: ");
       string search_term = readline();
 
@@ -154,7 +162,7 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    if (strcmp(cmd_input.buf, "PUBLISH") == 0) {
+    if (strncmp(cmd_input.buf, "PUBLISH", 7) == 0) {
       string* files = NULL;
       int32_t count = read_files(&files);
 
@@ -170,45 +178,27 @@ int main(int argc, char* argv[]) {
     }
 
     // New!
-    if (strcmp(cmd_input.buf, "FETCH") == 0) {
+    if (strncmp(cmd_input.buf, "FETCH", 5) == 0) {
       printf("Please enter a filename to fetch: ");
       string search_term = readline();
-      SearchResponse response = p2p_search(search_term, s);
 
-      if (response.peer_id == 0) {
-        printf("File not indexed by registry.\n");
-      } else {
-        // Convert to a C string so I can reuse lookup_and_connect.
-        char peer_ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &response.ip, peer_ip, INET_ADDRSTRLEN);
-        char port[6];
-        sprintf(port, "%d", response.port);
-        int peer_s;
+      FetchResponse response = p2p_fetch(search_term, s);
 
-        if ((peer_s = lookup_and_connect(peer_ip, port)) < 0) {
-          fprintf(stderr, "Unable to connect to host \"%s\". Exiting.\n", argv[1]);
-          return (EXIT_FAILURE);
-        }
-
-        Packet packet = {.tag = FETCH, .body.fetch = {.filename = search_term}};
-        NetBuffer nb = packet_to_netbuf(packet);
-        send_all(peer_s, nb.buf, nb.len);
-        free(nb.buf);
-
-        NetBuffer file = recv_all(peer_s);
-        if (file.error) {
-          fprintf(stderr, "Failed to receive file. Exiting.\n");
-          return (EXIT_FAILURE);
-        }
-
-        FILE* f = fopen(search_term.buf, "wb");
-        fwrite(file.buf, 1, file.len, f);
-
-        free(file.buf);
-        close(peer_s);
+      if (response.error) {
+        fprintf(stderr, "Failed to fetch file. Exiting.\n");
+        return (EXIT_FAILURE);
       }
-    }
 
+      FILE* f = fopen(search_term.buf, "wb");
+      if (f == NULL) {
+        fprintf(stderr, "Failed to open file for writing. Exiting.\n");
+        return (EXIT_FAILURE);
+      }
+
+      fwrite(response.buf, 1, response.len, f);
+
+      free(response.buf);
+    }
     free(cmd_input.buf);
   }
 
@@ -244,6 +234,67 @@ SearchResponse p2p_search(string search_term, int s) {
   return response;
 }
 
+int connect_to_peer(SearchResponse response) {
+  char peer_ip[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &response.ip, peer_ip, INET_ADDRSTRLEN);
+  char port[6];
+  snprintf(port, 6, "%d", response.port);
+  return lookup_and_connect(peer_ip, port);
+}
+
+FetchResponse receive_file(int peer_s) {
+  NetBuffer file = recv_all(peer_s);
+  if (file.error) {
+    fprintf(stderr, "Failed to receive file. Exiting.\n");
+    return (FetchResponse){.error = 1};
+  }
+
+  FetchResponse fetch_response;
+  memcpy(&fetch_response.error, file.buf, sizeof(int8_t));
+  fetch_response.len = file.len - sizeof(int8_t);
+  fetch_response.buf = malloc(fetch_response.len);
+  if (fetch_response.buf == NULL) {
+    fprintf(stderr, "Memory allocation failed. Exiting.\n");
+    free(file.buf);
+    return (FetchResponse){.error = 1};
+  }
+  memcpy(fetch_response.buf, file.buf + sizeof(int8_t), fetch_response.len);
+  free(file.buf);
+
+  return fetch_response;
+}
+
+FetchResponse p2p_fetch(string search_term, int s) {
+  SearchResponse response = p2p_search(search_term, s);
+
+  if (response.peer_id == 0) {
+    return (FetchResponse){.error = 1};
+  }
+
+  int peer_s = connect_to_peer(response);
+
+  if (peer_s < 0) {
+    fprintf(stderr, "Failed to connect to peer. Exiting.\n");
+    return (FetchResponse){.error = 1};
+  }
+
+  Packet packet = {.tag = FETCH, .body.fetch = {.filename = search_term}};
+  NetBuffer nb = packet_to_netbuf(packet);
+  send_all(peer_s, nb.buf, nb.len);
+  free(nb.buf);
+
+  NetBuffer file = recv_all(peer_s);
+  if (file.error) {
+    fprintf(stderr, "Failed to receive file. Exiting.\n");
+    return (FetchResponse){.error = 1};
+  }
+
+  FetchResponse fetch_response = receive_file(peer_s);
+
+  close(peer_s);
+  return fetch_response;
+}
+
 // This would be a lot easier if we used a packed struct.
 NetBuffer packet_to_netbuf(Packet packet) {
 #define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
@@ -261,7 +312,7 @@ NetBuffer packet_to_netbuf(Packet packet) {
     case SEARCH:
       size += packet.body.search.search_term.len;
       break;
-    case FETCH: // New!
+    case FETCH:  // New!
       size += packet.body.fetch.filename.len;
   }
 
@@ -294,7 +345,7 @@ NetBuffer packet_to_netbuf(Packet packet) {
     case SEARCH:
       memcpy(ptr, packet.body.search.search_term.buf, packet.body.search.search_term.len);
       break;
-    case FETCH: // New!
+    case FETCH:  // New!
       memcpy(ptr, packet.body.fetch.filename.buf, packet.body.fetch.filename.len);
       break;
   }
