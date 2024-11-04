@@ -223,9 +223,9 @@ SearchResponse p2p_search(string search_term, int s) {
   free(nb.buf);
 
   uint8_t response_buf[10];
-  ssize_t received = recv_buffer(s, response_buf, 10);
+  ssize_t rx = recv_buffer(s, response_buf, 10);
 
-  if (received < 0) {
+  if (rx < 0) {
     fprintf(stderr, "Failed to receive search response. Exiting.\n");
     return (SearchResponse){.peer_id = 0};
   }
@@ -240,6 +240,7 @@ SearchResponse p2p_search(string search_term, int s) {
   return response;
 }
 
+// Kind of lazy way to reuse lookup_and_connect.
 int connect_to_peer(SearchResponse response) {
   char peer_ip[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &response.ip, peer_ip, INET_ADDRSTRLEN);
@@ -249,23 +250,23 @@ int connect_to_peer(SearchResponse response) {
 }
 
 FetchResponse receive_file(int peer_s) {
-  NetBuffer file = recv_all(peer_s);
-  if (file.error) {
+  NetBuffer rx = recv_all(peer_s);
+  if (rx.error) {
     fprintf(stderr, "Failed to receive file. Exiting.\n");
     return (FetchResponse){.error = 1};
   }
 
   FetchResponse fetch_response;
-  memcpy(&fetch_response.error, file.buf, sizeof(int8_t));
-  fetch_response.len = file.len - sizeof(int8_t);
+  memcpy(&fetch_response.error, rx.buf, sizeof(int8_t));
+  fetch_response.len = rx.len - sizeof(int8_t);
   fetch_response.buf = malloc(fetch_response.len);
   if (fetch_response.buf == NULL) {
     fprintf(stderr, "Memory allocation failed. Exiting.\n");
-    free(file.buf);
+    free(rx.buf);
     return (FetchResponse){.error = 1};
   }
-  memcpy(fetch_response.buf, file.buf + sizeof(int8_t), fetch_response.len);
-  free(file.buf);
+  memcpy(fetch_response.buf, rx.buf + sizeof(int8_t), fetch_response.len);
+  free(rx.buf);
 
   return fetch_response;
 }
@@ -295,9 +296,8 @@ FetchResponse p2p_fetch(string search_term, int s) {
   return fetch_response;
 }
 
-// This would be a lot easier if we used a packed struct.
 NetBuffer packet_to_netbuf(Packet packet) {
-#define qcopy(dst, x) memcpy(dst, &x, sizeof(x));
+  // Build the total size of the buffer.
   size_t size = sizeof(uint8_t);
   switch (packet.tag) {
     case JOIN:
@@ -316,37 +316,39 @@ NetBuffer packet_to_netbuf(Packet packet) {
       size += packet.body.fetch.filename.len;
   }
 
+  // Allocate the buffer.
   uint8_t* buffer = (uint8_t*)malloc(size);
   if (buffer == NULL) {
     return (NetBuffer){.buf = NULL, .len = 0};
   }
 
-  uint8_t* ptr = buffer;
-  memcpy(ptr, &packet.tag, sizeof(uint8_t));
-  ptr += sizeof(uint8_t);
+  uint8_t* offset = buffer;
+  memcpy(offset, &packet.tag, sizeof(uint8_t));
+  offset += sizeof(uint8_t);
 
+  // Serialize the body.
   switch (packet.tag) {
     case JOIN: {
       uint32_t peer_id = htonl(packet.body.join.peer_id);
-      qcopy(ptr, peer_id);
+      memcpy(offset, &peer_id, sizeof(peer_id));
       break;
     }
     case PUBLISH: {
       uint32_t count = htonl(packet.body.publish.count);
-      qcopy(ptr, count);
-      ptr += sizeof(count);
+      memcpy(offset, &count, sizeof(count));
+      offset += sizeof(count);
       for (uint32_t i = 0; i < packet.body.publish.count; i++) {
         ptrdiff_t len = packet.body.publish.filenames[i].len;
-        memcpy(ptr, packet.body.publish.filenames[i].buf, len);
-        ptr += len;
+        memcpy(offset, packet.body.publish.filenames[i].buf, len);
+        offset += len;
       }
       break;
     }
     case SEARCH:
-      memcpy(ptr, packet.body.search.search_term.buf, packet.body.search.search_term.len);
+      memcpy(offset, packet.body.search.search_term.buf, packet.body.search.search_term.len);
       break;
     case FETCH:  // New!
-      memcpy(ptr, packet.body.fetch.filename.buf, packet.body.fetch.filename.len);
+      memcpy(offset, packet.body.fetch.filename.buf, packet.body.fetch.filename.len);
       break;
   }
 
