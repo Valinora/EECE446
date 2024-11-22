@@ -40,9 +40,9 @@ ssize_t recv_buffer(int s, uint8_t* buff, ssize_t len);
 
 
 typedef struct {
+  int8_t error;
   uint8_t* buf;
   ptrdiff_t len;
-  int error;
 } NetBuffer;
 
 /**
@@ -85,5 +85,5 @@ string readline();
  * strings.
  * Reallocation is used to grow the array as needed.
  */
-int32_t read_files(string** out);
+int32_t list_files(string** out);
 

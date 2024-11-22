@@ -11,6 +11,15 @@
 
 #include "utilities.h"
 
+#define debug_print(fmt, ...) \
+  do {                        \
+    if (debug) {               \
+      fprintf(stderr, fmt, ##__VA_ARGS__); \
+    }                         \
+  } while (0)
+
+static int debug = 0;
+
 // Wish we had C23 on jaguar. Could specify enum size.
 // `enum Action : uint8_t {` my beloved.
 enum Action {
@@ -97,6 +106,17 @@ void dump_packet(const NetBuffer* packet) {
   printf("\n");
 }
 
+void send_packet(int s, Packet packet) {
+  NetBuffer nb = packet_to_netbuf(packet);
+  debug_print("Sending packet: ");
+  if (debug) {
+    dump_packet(&nb);
+  }
+  send_all(s, nb.buf, nb.len);
+  free(nb.buf);
+}
+
+
 int main(int argc, char* argv[]) {
   if (argc < 4) {
     fprintf(stderr, "Usage: %s <registry> <port_number> <peer_id>\n", argv[0]);
@@ -111,12 +131,17 @@ int main(int argc, char* argv[]) {
     return (EXIT_FAILURE);
   }
 
-  // Signedness issue. TODO: Fix.
   uint32_t peer_id = atoi(argv[3]);
 
   if (peer_id <= 0) {
     fprintf(stderr, "Invalid peer id: \"%d\". Exiting.\n", peer_id);
     return (EXIT_FAILURE);
+  }
+
+  if (argc == 5) {
+    if (strncmp(argv[4], "-d", 2) == 0) {
+      debug = 1;
+    }
   }
 
   int s;
@@ -129,24 +154,21 @@ int main(int argc, char* argv[]) {
   int exit = 0;
 
   while (!exit) {
-    printf("Please enter a command, one of JOIN, SEARCH, PUBLISH, or EXIT: ");
+    printf("Command: ");
     string cmd_input = readline();
 
-    if (strncmp(cmd_input.buf, "EXIT", 4) == 0) {
+    if (strncasecmp(cmd_input.buf, "EXIT", 4) == 0) {
       exit = 1;
       break;
     }
 
-    if (strncmp(cmd_input.buf, "JOIN", 4) == 0) {
+    if (strncasecmp(cmd_input.buf, "JOIN", 4) == 0) {
       Packet packet = {.tag = JOIN, .body.join = {.peer_id = peer_id}};
-      NetBuffer nb = packet_to_netbuf(packet);
-
-      send_all(s, nb.buf, nb.len);
-      free(nb.buf);
+      send_packet(s, packet);
     }
 
-    if (strncmp(cmd_input.buf, "SEARCH", 6) == 0) {
-      printf("Please enter a filename to search for: ");
+    if (strncasecmp(cmd_input.buf, "SEARCH", 6) == 0) {
+      printf("Filename: ");
       string search_term = readline();
 
       SearchResponse response = p2p_search(search_term, s);
@@ -162,24 +184,31 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    if (strncmp(cmd_input.buf, "PUBLISH", 7) == 0) {
-      string* files = NULL;
-      int32_t count = read_files(&files);
+    if (strncasecmp(cmd_input.buf, "PUBLISH", 7) == 0) {
+      string* file_names = NULL;
+      int32_t count = list_files(&file_names);
+
+      debug_print("Found %d files\n", count);
+
+      if (debug && count > 0) {
+        for (int i = 0; i < count; i++) {
+          debug_print("%s\n", file_names[i].buf);
+        }
+      }
 
       if (count < 0) {
         fprintf(stderr, "Failed to read files. Exiting.\n");
         return (EXIT_FAILURE);
       }
 
-      Packet packet = {.tag = PUBLISH, .body.publish = {.count = count, .filenames = files}};
-      NetBuffer nb = packet_to_netbuf(packet);
-
-      send_all(s, nb.buf, nb.len);
+      Packet packet = {.tag = PUBLISH, .body.publish = {.count = count, .filenames = file_names}};
+      debug_print("Sending packet\n");
+      send_packet(s, packet);
     }
 
     // New!
-    if (strncmp(cmd_input.buf, "FETCH", 5) == 0) {
-      printf("Please enter a filename to fetch: ");
+    if (strncasecmp(cmd_input.buf, "FETCH", 5) == 0) {
+      printf("Filename: ");
       string search_term = readline();
 
       FetchResponse response = p2p_fetch(search_term, s);
@@ -196,14 +225,19 @@ int main(int argc, char* argv[]) {
       }
 
       fwrite(response.buf, 1, response.len, f);
-      // This took me entirely too long to debug.
-      // Tests were failing with truncated files.
-      // Forgot about flushing when writing to a file.
-      // Nevermind the memory leak.
-      // Grrr...
       fclose(f); // This calls fflush for us.
 
       free(response.buf);
+    }
+
+    // For fun.
+    if (strncasecmp(cmd_input.buf, "HELP", 4) == 0) {
+      printf("Commands:\n");
+      printf("\tJOIN\n");
+      printf("\tPUBLISH\n");
+      printf("\tSEARCH\n");
+      printf("\tFETCH\n");
+      printf("\tEXIT\n");
     }
     free(cmd_input.buf);
   }
@@ -213,14 +247,7 @@ int main(int argc, char* argv[]) {
 
 SearchResponse p2p_search(string search_term, int s) {
   Packet packet = {.tag = SEARCH, .body.search = {.search_term = search_term}};
-  NetBuffer nb = packet_to_netbuf(packet);
-
-  ssize_t sent = send_all(s, nb.buf, nb.len);
-  if (sent < 0) {
-    fprintf(stderr, "Failed to send search term. Exiting.\n");
-    return (SearchResponse){.peer_id = 0};
-  }
-  free(nb.buf);
+  send_packet(s, packet);
 
   uint8_t response_buf[10];
   ssize_t rx = recv_buffer(s, response_buf, 10);
@@ -286,9 +313,7 @@ FetchResponse p2p_fetch(string search_term, int s) {
   }
 
   Packet packet = {.tag = FETCH, .body.fetch = {.filename = search_term}};
-  NetBuffer nb = packet_to_netbuf(packet);
-  send_all(peer_s, nb.buf, nb.len);
-  free(nb.buf);
+  send_packet(peer_s, packet);
 
   FetchResponse fetch_response = receive_file(peer_s);
 

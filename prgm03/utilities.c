@@ -38,6 +38,7 @@ NetBuffer recv_all(int s) {
       free(buf);
       return (NetBuffer){.buf = NULL, .len = 0, .error = n};
     } else if (n == 0) {
+      // Peer has closed the connection
       break;
     }
     total += n;
@@ -126,7 +127,7 @@ string readline() {
   return out;
 }
 
-int32_t read_files(string** out) {
+int32_t list_files(string** out) {
   DIR* dir = opendir("SharedFiles");
 
   if (dir == NULL) {
@@ -140,16 +141,12 @@ int32_t read_files(string** out) {
   while ((entry = readdir(dir))) {
     // Ignore directories
     if (entry->d_type == DT_REG) {
-      if (*out == NULL) {
-        *out = malloc(sizeof(string));
-      } else {
-        *out = realloc(*out, (count + 1) * sizeof(string));
-      }
+      count++;
+      *out = realloc(*out, count * sizeof(string));
 
       string filename = (string){.buf = strdup(entry->d_name), .len = strlen(entry->d_name) + 1};
       filename.buf[filename.len - 1] = '\0';
-      (*out)[count] = filename;
-      count++;
+      (*out)[count - 1] = filename;
     }
   }
 
