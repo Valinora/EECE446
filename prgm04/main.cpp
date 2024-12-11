@@ -5,16 +5,42 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <iostream>
-
-#include "connectionfactory.h"
+#include <optional>
+#include <queue>
 
 #define SERVER_PORT "5432"
 #define MAX_LINE 256
 #define MAX_PENDING 5
 
-/*
+class PriorityQueueExt : public std::priority_queue<int> {
+ public:
+  /**
+   * Removes a given value from the queue, regardless of position, and returns the value.
+   * @param value The value to be removed.
+   * @return A std::optional containing the value removed or nullopt if no match was found.
+   */
+  std::optional<int> remove(const int& value) {
+    auto it = std::find(this->c.begin(), this->c.end(), value);
+
+    if (it == this->c.end()) {
+      return std::nullopt;
+    } else if (it == this->c.begin()) {
+      int ret = this->top();
+      this->pop();
+      return ret;
+    } else {
+      int ret = *it;
+      this->c.erase(it);
+      std::make_heap(this->c.begin(), this->c.end(), this->comp);
+      return ret;
+    }
+  }
+};
+
+/**
  * Create, bind and passive open a socket on a local interface for the provided service.
  * Argument matches the second argument to getaddrinfo(3).
  *
@@ -23,7 +49,7 @@
  */
 int bind_and_listen(const char* service);
 
-/*
+/**
  * Return the maximum socket descriptor set in the argument.
  * This is a helper function that might be useful to you.
  */
@@ -37,7 +63,7 @@ int main(int argc, char** argv) {
 
   char* port = argv[1];
 
-  priority_queue_ext sockets = {};
+  PriorityQueueExt conn_pq = {};
 
   // all_sockets stores all active sockets. Any socket connected to the server should
   // be included in the set. A socket that disconnects should be removed from the set.
@@ -51,11 +77,11 @@ int main(int argc, char** argv) {
 
   // listen_socket is the fd on which the program can accept() new connections
   int listen_socket = bind_and_listen(port);
-  sockets.push(listen_socket);
+  conn_pq.push(listen_socket);
   FD_SET(listen_socket, &all_sockets);
   // max_socket should always contain the socket fd with the largest value, just one
   // for now.
-  int max_socket = sockets.top();
+  int max_socket = conn_pq.top();
 
   char buf[1024] = {0};
 
@@ -74,23 +100,16 @@ int main(int argc, char** argv) {
 
       // A new connection is ready
       if (s == listen_socket) {
-        // What should happen with a new connection?
-        // You need to call at least one function here
-        // and update some variables.
-        int new_sfd = accept(s, NULL, NULL);
-        sockets.push(new_sfd);
-        FD_SET(new_sfd, &all_sockets);
-        printf("Socket %d connected\n", new_sfd);
+        int new_conn = accept(s, NULL, NULL);
+        conn_pq.push(new_conn);
+        FD_SET(new_conn, &all_sockets);
+        printf("Socket %d connected\n", new_conn);
 
-        max_socket = sockets.top();
+        max_socket = conn_pq.top();
       }
 
       // A connected socket is ready
       else {
-        // Put your code here for connected sockets.
-        // Don't forget to handle a closed socket, which will
-        // end up here as well.
-
         int received = recv(s, buf, 1024, 0);
         if (received < 0) {
           perror("received");
@@ -98,8 +117,8 @@ int main(int argc, char** argv) {
         } else if (received == 0) {
           // Connection closed
           FD_CLR(s, &all_sockets);
-          sockets.remove(s);
-          max_socket = sockets.top();
+          conn_pq.remove(s);
+          max_socket = conn_pq.top();
           printf("Socket %d closed\n", s);
           continue;
         }
