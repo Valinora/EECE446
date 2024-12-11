@@ -16,5 +16,5 @@ class Packet {
   std::vector<std::uint8_t> buf;
 
   ssize_t send_all(int s);
-  int recv_all(int s);
+  ssize_t recv_all(int s);
 };
