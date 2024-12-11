@@ -26,7 +26,7 @@ public:
 
 class PeerList {
     std::unordered_map<std::string, Peer> filemap = {};
-    // I'd love to use peer->id as the index into this, but the std::vector isn't sparse,
+    // I'd love to use peer->id as the index into this, but std::vector isn't sparse,
     // and peer->id can be arbitrarily large.
     // Could use another hash map, but ¯\_(ツ)_/¯
     std::vector<Peer> peers = {};
@@ -47,7 +47,7 @@ class PeerList {
         peers.push_back(peer);
     }
 
-    // I generally dislike the std's API design of not return elements that it removes.
+    // I generally dislike the std's API design of not returning elements that it removes.
     // I may never use this return value, but I'll be glad to have it if I *do* end up needing it.
     std::optional<Peer> remove(Peer peer) {
         for (const auto& file : peer.files) {
