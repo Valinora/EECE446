@@ -7,7 +7,8 @@
 
 #include <cstdio>
 #include <iostream>
-#include <queue>
+
+#include "connectionfactory.h"
 
 #define SERVER_PORT "5432"
 #define MAX_LINE 256
@@ -36,6 +37,8 @@ int main(int argc, char** argv) {
 
   char* port = argv[1];
 
+  priority_queue_ext sockets = {};
+
   // all_sockets stores all active sockets. Any socket connected to the server should
   // be included in the set. A socket that disconnects should be removed from the set.
   // The server's main socket should always remain in the set.
@@ -48,10 +51,11 @@ int main(int argc, char** argv) {
 
   // listen_socket is the fd on which the program can accept() new connections
   int listen_socket = bind_and_listen(port);
+  sockets.push(listen_socket);
   FD_SET(listen_socket, &all_sockets);
   // max_socket should always contain the socket fd with the largest value, just one
   // for now.
-  int max_socket = listen_socket;
+  int max_socket = sockets.top();
 
   char buf[1024] = {0};
 
@@ -74,10 +78,11 @@ int main(int argc, char** argv) {
         // You need to call at least one function here
         // and update some variables.
         int new_sfd = accept(s, NULL, NULL);
+        sockets.push(new_sfd);
         FD_SET(new_sfd, &all_sockets);
         printf("Socket %d connected\n", new_sfd);
 
-        max_socket = find_max_fd(&all_sockets);
+        max_socket = sockets.top();
       }
 
       // A connected socket is ready
@@ -93,7 +98,8 @@ int main(int argc, char** argv) {
         } else if (received == 0) {
           // Connection closed
           FD_CLR(s, &all_sockets);
-          max_socket = find_max_fd(&all_sockets);
+          sockets.remove(s);
+          max_socket = sockets.top();
           printf("Socket %d closed\n", s);
           continue;
         }
@@ -104,6 +110,7 @@ int main(int argc, char** argv) {
   }
 }
 
+// Linear scan is bad!
 int find_max_fd(const fd_set* fs) {
   int ret = 0;
   for (int i = FD_SETSIZE - 1; i >= 0 && ret == 0; --i) {
