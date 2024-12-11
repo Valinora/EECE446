@@ -1,5 +1,5 @@
 RELEASE_FLAGS = -Wall -Wextra -O3
-DEBUG_FLAGS = -Wall -Wextra -g3 -Wconversion -Wdouble-promotion -Wno-sign-conversion
+DEBUG_FLAGS = -Wall -Wextra -g3 -Wconversion -Wdouble-promotion -Wno-sign-conversion -fsanitize=address -fsanitize=undefined
 NAME = registry
 SOURCES = main.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
