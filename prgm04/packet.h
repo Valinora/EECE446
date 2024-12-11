@@ -37,12 +37,13 @@ class Packet {
     }
     return total;
   }
-  ssize_t recv_all(int s) {
+
+  ssize_t recv_all(int s, int max) {
     ssize_t total = 0;
     ssize_t bytesleft = 0;
     ssize_t n;
 
-    while (true) {
+    while (total < max) {
       buf.resize(total + 1024);
       bytesleft = 1024;
       n = recv(s, buf.data() + total, bytesleft, 0);
@@ -56,6 +57,6 @@ class Packet {
     }
 
     buf.resize(total);
-    return 0;
+    return total;
   }
 };
