@@ -94,7 +94,8 @@ class ConnPool {
     std::vector<int> active_sockets = {};
 
     if (num_s < 0) {
-      std::cerr << "Error in select call" << std::endl;
+      std::cerr << "Error in select call: " << strerror(errno) << std::endl;
+      std::cerr << "select(" << conn_queue.top() + 1 << ", &call_set, NULL, NULL, NULL) -> " << errno << std::endl;
       abort();
     }
 

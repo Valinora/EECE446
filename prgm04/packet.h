@@ -49,6 +49,11 @@ class Packet {
   ssize_t recv_buf(int s, int max) {
     buf.resize(max);
     ssize_t received = recv(s, buf.data(), buf.size(), 0);
+
+    if (received < 0) {
+      return received;
+    }
+
     buf.resize(received);
     buf.shrink_to_fit();
 

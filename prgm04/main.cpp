@@ -36,6 +36,12 @@ int main(int argc, char** argv) {
       Packet packet;
       ssize_t received = packet.recv_buf(ready_peer, BUF_SIZE);
 
+      if (received < 0) {
+        fprintf(stderr, "Error receiving packet: %s\n", strerror(errno));
+        continue;
+      }
+
+      // Conn closed, clean up.
       if (received == 0) {
         Peer& peer = peers[ready_peer];
         for (const auto& file : peer.files) {
@@ -47,6 +53,7 @@ int main(int argc, char** argv) {
         continue;
       }
 
+      // If we made it to here, we have at least one byte. (received >= 1)
       switch (packet.buf[0]) {
         case JOIN: {
           Peer peer = packet.handle_join(ready_peer);

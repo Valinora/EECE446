@@ -3,8 +3,9 @@
 #include <netinet/in.h>
 #include <stdint.h>
 #include <sys/socket.h>
+#include <stdint.h>
+#include <string.h>
 
-#include <cstdint>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -25,6 +26,7 @@ class Peer {
     if (getpeername(socket_fd, (struct sockaddr*)&address, &len) != 0) {
       // Nothing good could have happened.
       // Unrecoverable.
+      fprintf(stderr, "Error getting peer name: %s\n", strerror(errno));
       abort();
     }
   }
