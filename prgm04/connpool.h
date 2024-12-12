@@ -13,40 +13,12 @@
 #include <queue>
 #include <optional>
 #include <algorithm>
+#include <set>
 
 #include "netdb.h"
 #include "peer.h"
 
 #define MAX_PENDING 5
-
-
-// Doing this is probably more work than just using a linear scan like I probably
-// should have done, but what's the point of learning about data structures and algorithms
-// if I don't use them?
-class PriorityQueueExt : public std::priority_queue<int> {
- public:
-  /**
-   * Removes a given value from the queue, regardless of position, and returns the value.
-   * @param value The value to be removed.
-   * @return A std::optional containing the value removed or nullopt if no match was found.
-   */
-  inline std::optional<int> remove(const int& value) {
-    auto it = std::find(this->c.begin(), this->c.end(), value);
-
-    if (it == this->c.end()) {
-      return std::nullopt;
-    } else if (it == this->c.begin()) {
-      int ret = this->top();
-      this->pop();
-      return ret;
-    } else {
-      int ret = *it;
-      this->c.erase(it);
-      std::make_heap(this->c.begin(), this->c.end(), this->comp);
-      return ret;
-    }
-  }
-};
 
 /**
  * Create, bind and passive open a socket on a local interface for the provided service.
@@ -59,7 +31,7 @@ int bind_and_listen(const char* service);
 
 class ConnPool {
  protected:
-  PriorityQueueExt conn_queue = {};
+  std::set<int> conn_set = {};
   fd_set all_sockets;
   int listen_socket;
 
@@ -68,13 +40,11 @@ class ConnPool {
     FD_ZERO(&all_sockets);
     listen_socket = bind_and_listen(service);
     FD_SET(listen_socket, &all_sockets);
-    conn_queue.push(listen_socket);
+    conn_set.insert(listen_socket);
   }
 
   ~ConnPool() {
-    while(!conn_queue.empty()) {
-      int s = conn_queue.top();
-      conn_queue.pop();
+    for (int s : conn_set) {
       close(s);
     }
   }
@@ -89,26 +59,24 @@ class ConnPool {
    */
   std::vector<int> await() {
     fd_set call_set = all_sockets;
-    int num_s = select(conn_queue.top() + 1, &call_set, NULL, NULL, NULL);
+    int max_fd = *conn_set.rbegin();
+    int num_s = select(max_fd + 1, &call_set, NULL, NULL, NULL);
 
     std::vector<int> active_sockets = {};
 
     if (num_s < 0) {
       std::cerr << "Error in select call: " << strerror(errno) << std::endl;
-      std::cerr << "select(" << conn_queue.top() + 1 << ", &call_set, NULL, NULL, NULL) -> " << errno << std::endl;
+      std::cerr << "select(" << max_fd + 1 << ", &call_set, NULL, NULL, NULL) -> " << errno << std::endl;
       abort();
     }
 
-    // Check each potential socket.
-    // Skip standard IN/OUT/ERROR -> start at 3.
-    for (int s = 3; s <= conn_queue.top(); ++s) {
-      // Skip sockets that aren't ready
-      if (!FD_ISSET(s, &call_set)) continue;
-
-      // A new connection is ready
+    for (int s : conn_set) {
+      if (!FD_ISSET(s, &call_set)) {
+        continue;
+      }
       if (s == listen_socket) {
         int new_conn = accept(s, NULL, NULL);
-        conn_queue.push(new_conn);
+        conn_set.insert(new_conn);
         FD_SET(new_conn, &all_sockets);
       } else {
         active_sockets.push_back(s);
@@ -119,7 +87,7 @@ class ConnPool {
 
   void releaseSocket(int s) {
     FD_CLR(s, &all_sockets);
-    conn_queue.remove(s);
+    conn_set.erase(s);
     close(s);
   }
 };
