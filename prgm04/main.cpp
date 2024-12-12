@@ -7,7 +7,6 @@
 #include <unistd.h>
 
 #include <cstdint>
-#include <iostream>
 #include <string>
 #include <unordered_map>
 
@@ -32,7 +31,7 @@ int main(int argc, char** argv) {
   std::unordered_map<int, Peer> peers = {};
   std::unordered_map<std::string, Peer> filemap = {};
 
-  while (1) {
+  while (true) {
     for (const auto& ready_peer : pool.await()) {
       Packet packet;
       ssize_t received = packet.recv_buf(ready_peer, BUF_SIZE);
@@ -51,7 +50,7 @@ int main(int argc, char** argv) {
       switch (packet.buf[0]) {
         case JOIN: {
           Peer peer = packet.handle_join(ready_peer);
-          peers.insert({ready_peer, peer});
+          peers[ready_peer] = peer;
           printf("TEST] JOIN %u\n", peer.id);
           break;
         }
@@ -79,7 +78,7 @@ int main(int argc, char** argv) {
 
           printf("TEST] PUBLISH %zu ", files.size());
           for (const auto& file : files) {
-            filemap.insert({file, peer});
+            filemap[file] = peer;
             printf("%s ", file.c_str());
           }
           printf("\n");

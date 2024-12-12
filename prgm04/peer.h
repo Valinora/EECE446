@@ -17,17 +17,12 @@ class Peer {
   std::vector<std::string> files = {};
   struct sockaddr_in address;
 
-  Peer() {
-    id = 0;
-    socket_fd = 0;
-    address = {};
-  }
+  Peer() : id(0), socket_fd(0), address{} {}
 
   Peer(uint32_t id, int socket_fd) : id(id), socket_fd(socket_fd) {
     socklen_t len = sizeof(address);
-    int ret = getpeername(socket_fd, (struct sockaddr*)&address, &len);
 
-    if (ret != 0) {
+    if (getpeername(socket_fd, (struct sockaddr*)&address, &len) != 0) {
       // Nothing good could have happened.
       // Unrecoverable.
       abort();
@@ -40,9 +35,9 @@ class Peer {
     }
   }
 
-  void add_file(std::string file) { files.push_back(file); }
+  void add_file(const std::string file) { files.push_back(file); }
 
-  bool operator==(const Peer& other) { return socket_fd == other.socket_fd; }
+  bool operator==(const Peer& other) const { return socket_fd == other.socket_fd; }
 };
 
 class PeerList {
@@ -96,7 +91,8 @@ class PeerList {
    */
   std::optional<Peer> remove(int sfd) {
     Peer needle(0, 0);
-    // And yet I still end up doing linear scans...........
+    // All that talk about hash maps and O(1) lookups,
+    // and yet I still end up doing linear scans...........
     for (const auto& peer : peers) {
       if (peer.socket_fd == sfd) {
         needle = peer;
