@@ -1,7 +1,7 @@
 RELEASE_FLAGS = -Wall -Wextra -O3
 DEBUG_FLAGS = -Wall -Wextra -g3 -Wconversion -Wdouble-promotion -Wno-sign-conversion -fsanitize=address -fsanitize=undefined
 NAME = registry
-HEADERS = packet.h peerpool.h
+HEADERS = packet.h connpool.h
 
 CXX = g++
 CFLAGS = $(RELEASE_FLAGS)
