@@ -3,16 +3,17 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdio.h>
 
-#include <cstdio>
 #include <iostream>
 
 #include "packet.h"
-#include "peerpool.h"
+#include "connpool.h"
 
-#define SERVER_PORT "5432"
 #define MAX_LINE 256
-#define MAX_PENDING 5
+#define MAX_FILES 10
+#define MAX_FILENAME_LEN 100
+#define BUF_SIZE 1024 + MAX_FILES * MAX_FILENAME_LEN
 
 
 /**
@@ -38,23 +39,37 @@ int main(int argc, char** argv) {
 
   char* port = argv[1];
 
-  PeerPool pool(port);
+  ConnPool pool(port);
+  PeerList peers;
 
   while(1) {
     for (const auto& ready_peer : pool.await()) {
       printf("Processing %d\n", ready_peer);
-      Packet packet;
-      ssize_t received = packet.recv_all(ready_peer, 1024);
+      std::vector<uint8_t> packet(BUF_SIZE);
+      ssize_t received = recv(ready_peer, packet.data(), packet.size(), 0);
+      packet.resize(received);
 
       if (received == 0) {
         printf("Socket %d closed\n", ready_peer);
         pool.releaseSocket(ready_peer);
+        continue;
       }
 
-      for (const auto& byte : packet.buf) {
-        printf("%02x ", byte);
+      switch (packet[0]) {
+        case JOIN:
+          printf("JOIN\n");
+          break;
+        case SEARCH:
+          printf("SEARCH\n");
+          break;
+        case PUBLISH:
+          printf("PUBLISH\n");
+          break;
+        default:
+          printf("Unknown packet.\n");
+          break;
       }
-      printf("\n");
+
     }
   }
 

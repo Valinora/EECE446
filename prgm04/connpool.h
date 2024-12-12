@@ -19,6 +19,10 @@
 
 #define MAX_PENDING 5
 
+
+// Doing this is probably more work than just using a linear scan like I probably
+// should have done, but what's the point of learning about data structures and algorithms
+// if I don't use them?
 class PriorityQueueExt : public std::priority_queue<int> {
  public:
   /**
@@ -53,15 +57,14 @@ class PriorityQueueExt : public std::priority_queue<int> {
  */
 int bind_and_listen(const char* service);
 
-class PeerPool {
+class ConnPool {
  protected:
   PriorityQueueExt conn_queue = {};
-  // PeerList peers;
   fd_set all_sockets;
   int listen_socket;
 
  public:
-  PeerPool(const char* service) {
+  ConnPool(const char* service) {
     FD_ZERO(&all_sockets);
     listen_socket = bind_and_listen(service);
     FD_SET(listen_socket, &all_sockets);
@@ -106,16 +109,6 @@ class PeerPool {
     return active_sockets;
   }
 
-  /**
-   * @brief Releases a socket and removes it from the connection queue.
-   *
-   * This function performs the following actions:
-   * 1. Removes the socket from the fdset of all sockets.
-   * 2. Removes the socket from the connection queue.
-   * 3. Closes the socket.
-   *
-   * @param s The socket descriptor to be released.
-   */
   void releaseSocket(int s) {
     FD_CLR(s, &all_sockets);
     conn_queue.remove(s);
