@@ -96,8 +96,8 @@ class Packet {
   void search_response(Peer peer) {
     buf.resize(sizeof(uint32_t) * 2 + sizeof(uint16_t));
     uint32_t id = htonl(peer.id);
-    uint32_t ip = htonl(peer.address.sin_addr.s_addr);
-    uint16_t port = htons(peer.address.sin_port);
+    uint32_t ip = peer.address.sin_addr.s_addr;
+    uint16_t port = peer.address.sin_port;
 
     memcpy(buf.data(), &id, sizeof(uint32_t));
     memcpy(buf.data() + sizeof(uint32_t), &ip, sizeof(uint32_t));
