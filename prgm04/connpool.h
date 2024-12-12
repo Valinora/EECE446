@@ -71,6 +71,14 @@ class ConnPool {
     conn_queue.push(listen_socket);
   }
 
+  ~ConnPool() {
+    while(!conn_queue.empty()) {
+      int s = conn_queue.top();
+      conn_queue.pop();
+      close(s);
+    }
+  }
+
   /**
    * @brief Waits for activity on any of the sockets and returns a list of active sockets.
    *
@@ -101,7 +109,6 @@ class ConnPool {
         int new_conn = accept(s, NULL, NULL);
         conn_queue.push(new_conn);
         FD_SET(new_conn, &all_sockets);
-        printf("Socket %d connected\n", new_conn);
       } else {
         active_sockets.push_back(s);
       }

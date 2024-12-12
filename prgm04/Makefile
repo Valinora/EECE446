@@ -3,7 +3,7 @@ DEBUG_FLAGS = -Wall -Wextra -g3 -Wconversion -Wdouble-promotion -Wno-sign-conver
 NAME = registry
 HEADERS = packet.h connpool.h
 
-CXX = g++
+CXX = clang++
 CFLAGS = $(RELEASE_FLAGS)
 CXXFLAGS = $(RELEASE_FLAGS)
 
