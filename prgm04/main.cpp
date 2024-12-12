@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
       ssize_t received = packet.recv_buf(ready_peer, BUF_SIZE);
 
       if (received == 0) {
-        Peer& peer = peers.at(ready_peer);
+        Peer& peer = peers[ready_peer];
         for (const auto& file : peer.files) {
           filemap.erase(file);
         }
