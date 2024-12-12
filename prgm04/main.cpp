@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -66,8 +67,9 @@ int main(int argc, char** argv) {
 
           char ip[INET_ADDRSTRLEN];
           inet_ntop(AF_INET, &peer.address.sin_addr, ip, INET_ADDRSTRLEN);
+          uint16_t port = ntohs(peer.address.sin_port);
 
-          printf("TEST] SEARCH %s %u %s:%u\n", search_term.c_str(), peer.id, ip, peer.address.sin_port);
+          printf("TEST] SEARCH %s %u %s:%u\n", search_term.c_str(), peer.id, ip, port);
           break;
         }
         case PUBLISH: {

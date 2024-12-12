@@ -10,11 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-/**
- * We assume peer id's are unqiue. The protocol doesn't
- * support rejecting a peer for not choosing a unique id,
- * but I think it's a safe assumption.
- */
 class Peer {
  public:
   uint32_t id;
