@@ -98,7 +98,7 @@ class Packet {
     return std::string((char*)buf.data() + 1, len);
   }
 
-  void search_response(Peer peer) {
+  void search_response(const Peer& peer) {
     buf.resize(sizeof(uint32_t) * 2 + sizeof(uint16_t));
     uint32_t id = htonl(peer.id);
     uint32_t ip = peer.address.sin_addr.s_addr;

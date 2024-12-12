@@ -37,7 +37,7 @@ class Peer {
     }
   }
 
-  void add_file(const std::string file) { files.push_back(file); }
+  void add_file(const std::string& file) { files.push_back(file); }
 
   bool operator==(const Peer& other) const { return socket_fd == other.socket_fd; }
 };
