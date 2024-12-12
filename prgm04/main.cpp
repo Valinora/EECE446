@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
         case JOIN: {
           Peer peer = packet.handle_join(ready_peer);
           peers.insert({ready_peer, peer});
-          printf("TEST] JOIN %d\n", peer.id);
+          printf("TEST] JOIN %u\n", peer.id);
           break;
         }
         case SEARCH: {
@@ -66,10 +66,8 @@ int main(int argc, char** argv) {
 
           char ip[INET_ADDRSTRLEN];
           inet_ntop(AF_INET, &peer.address.sin_addr, ip, INET_ADDRSTRLEN);
-          char port[6];
-          snprintf(port, 6, "%d", ntohs(peer.address.sin_port));
 
-          printf("TEST] SEARCH %s %d %s:%s\n", search_term.c_str(), peer.id, ip, port);
+          printf("TEST] SEARCH %s %u %s:%u\n", search_term.c_str(), peer.id, ip, peer.address.sin_port);
           break;
         }
         case PUBLISH: {
